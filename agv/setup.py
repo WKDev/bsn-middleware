@@ -25,7 +25,6 @@ setup(
         'console_scripts': [
             'api_middleware = agv.api_middleware:main',
             'teleop = agv.teleop:main',
-            'teleop_rack = agv.teleop_rack:main',
             'led_manager = agv.led_manager:main',
             'teleop_gamepad = agv.teleop_gamepad:main',
             'work_manager = agv.work_manager:main',
