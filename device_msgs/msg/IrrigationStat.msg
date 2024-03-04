@@ -1,0 +1,3 @@
+int32 device_id
+int32 watering_mode
+int32 watering_status

@@ -1,0 +1,14 @@
+int32 target
+int32 current
+int32 prev
+int32 planning
+int64 odom
+int32 speed
+int32 obstacle_avoid_type
+string turn_mode
+string in_orbit_stat
+string task_stat
+string mag_fail_msg
+string mag_init_stat
+string direction
+string navi_stat

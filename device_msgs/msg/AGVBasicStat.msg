@@ -1,0 +1,11 @@
+string operating_status
+int32 start_btn
+int32 stop_btn
+int32 reset_btn
+int32 e_stop_btn
+int32 collision_btn
+int64 uptime
+int64 odometer
+geometry_msgs/Twist twist
+string current_mode
+string[] error_code
