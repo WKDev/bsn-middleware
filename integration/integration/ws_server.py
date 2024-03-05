@@ -87,18 +87,14 @@ class MyNode(Node):
     async def send_via_websocket(self):
         async with websockets.connect(self.websocket_url) as websocket:
             while True:
-                await websocket.send('test')
-                await asyncio.sleep(0.01)
-
-            # while True:
-                # if self.deque:
-                #     data = self.deque.popleft()
-                #     buf = '{' + f'{data[0]}'+':'+f"{data[1]}"+ "}"
-                #     print(buf)
-                #     await websocket.send(buf)  # Emit data to the /stat route
-                # else:
-                #     await websocket.send('test')
-                #     await asyncio.sleep(0.01)
+                if self.deque:
+                    data = self.deque.popleft()
+                    buf = '{' + f'{data[0]}'+':'+f"{data[1]}"+ "}"
+                    print(buf)
+                    await websocket.send(buf)  # Emit data to the /stat route
+                else:
+                    await websocket.send(0.05)
+                    await asyncio.sleep(0.01)
             # 서버 응답을 받고 싶다면 여기서 대기할 수 있습니다.
 
     # def send_msg(self, message):
