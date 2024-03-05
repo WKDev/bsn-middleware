@@ -93,8 +93,7 @@ class MyNode(Node):
                     print(buf)
                     await websocket.send(buf)  # Emit data to the /stat route
                 else:
-                    await websocket.send(0.05)
-                    await asyncio.sleep(0.01)
+                    await asyncio.sleep(0.05)
             # 서버 응답을 받고 싶다면 여기서 대기할 수 있습니다.
 
     # def send_msg(self, message):
