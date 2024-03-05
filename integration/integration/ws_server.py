@@ -9,14 +9,14 @@ import json
 
 class MyNode(Node):
     def __init__(self):
-        super().__init__('my_node')
-        self.deque = deque(maxlen=10)  # Set the maximum length of the deque as per your requirement
+        super().__init__('ws_server')
+        self.deque = deque(maxlen=100)  # Set the maximum length of the deque as per your requirement
         self.create_subscription(AGVBasicStat, '/basic_stat', self.basic_stat_callback, 10)
         self.create_subscription(AGVBattStat, '/batt_stat', self.batt_stat_callback, 10)
         self.create_subscription(AGVNavStat, '/nav_stat', self.nav_stat_callback, 10)
         self.create_subscription(Int32MultiArray, '/lift_stat', self.lift_stat_callback, 10)
         self.create_subscription(Alive, '/alive', self.alive_callback, 10)
-        self.websocket_server_task = asyncio.ensure_future(self.websocket_server())
+        self.websocket_url = 'ws://localhost:6759'
 
     def basic_stat_callback(self, msg):
         # Assuming the variables operating_status, lin_vel, and ang_vel are defined
@@ -28,7 +28,7 @@ class MyNode(Node):
         }
 
         json_string = json.dumps(data)
-        
+        print("received")
         self.deque.append(('basic_stat', json_string))
 
     def batt_stat_callback(self, msg):
@@ -74,19 +74,31 @@ class MyNode(Node):
         }
         self.deque.append(('alive', json.dumps(data)))
 
-    async def websocket_server(self):
-        async with websockets.serve(self.websocket_handler, '0.0.0.0', 6759):  # Set the desired host and port
-            await self.websocket_server_task
+    # async def websocket_server(self):
+    #     async with websockets.serve(self.websocket_handler, '0.0.0.0', 6759):  # Set the desired host and port
+    #         await self.websocket_server_task
 
-    async def websocket_handler(self, websocket, path):
-        while True:
-            if self.deque:
-                data = self.deque.popleft()
-                buf = '{' + f'{data[0]}'+':'+f"{data[1]}"+ "}"
-                print(buf)
-                await websocket.send(buf)  # Emit data to the /stat route
-            else:
-                await asyncio.sleep(0.01)
+    # async def websocket_handler(self, websocket, path):
+    #     while True:
+    #         
+        
+    async def send_via_websocket(self, message):
+        async with websockets.connect(self.websocket_url) as websocket:
+            while True:
+                if self.deque:
+                    data = self.deque.popleft()
+                    buf = '{' + f'{data[0]}'+':'+f"{data[1]}"+ "}"
+                    print(buf)
+                    await websocket.send(buf)  # Emit data to the /stat route
+                else:
+                    await websocket.send('test')
+                    await asyncio.sleep(0.01)
+            # 서버 응답을 받고 싶다면 여기서 대기할 수 있습니다.
+
+    def listener_callback(self, msg):
+        asyncio.run(self.send_via_websocket(msg.data))
+        
+    
 
 def main(args=None):
     print("ws_started")
