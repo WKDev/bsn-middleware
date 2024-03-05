@@ -88,11 +88,12 @@ class MyNode(Node):
         async with websockets.connect(self.websocket_url) as websocket:
             while True:
                 if self.deque:
-                    data = self.deque.popleft()
-                    buf = '{' + f'{data[0]}'+':'+f"{data[1]}"+ "}"
-                    print(buf)
-                    await websocket.send(buf)  # Emit data to the /stat route
+                    # data = self.deque.popleft()
+                    # buf = '{' + f'{data[0]}'+':'+f"{data[1]}"+ "}"
+                    # print(buf)
+                    await websocket.send('test')  # Emit data to the /stat route
                 else:
+                    print("nothing to publish")
                     await asyncio.sleep(0.05)
             # 서버 응답을 받고 싶다면 여기서 대기할 수 있습니다.
 
