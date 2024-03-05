@@ -75,7 +75,7 @@ class MyNode(Node):
         self.deque.append(('alive', json.dumps(data)))
 
     async def websocket_server(self):
-        async with websockets.serve(self.websocket_handler, 'localhost', 6759):  # Set the desired host and port
+        async with websockets.serve(self.websocket_handler, '0.0.0.0', 6759):  # Set the desired host and port
             await self.websocket_server_task
 
     async def websocket_handler(self, websocket, path):
