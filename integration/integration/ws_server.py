@@ -83,11 +83,13 @@ class MyNode(Node):
             if self.deque:
                 data = self.deque.popleft()
                 buf = '{' + f'{data[0]}'+':'+f"{data[1]}"+ "}"
+                print(buf)
                 await websocket.send(buf)  # Emit data to the /stat route
             else:
                 await asyncio.sleep(0.01)
 
 def main(args=None):
+    print("ws_started")
     rclpy.init(args=args)
     node = MyNode()
     try:
