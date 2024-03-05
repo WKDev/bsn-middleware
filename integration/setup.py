@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'ws_server = integration.ws_server:main',
         ],
     },
 )
