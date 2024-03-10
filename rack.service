@@ -3,11 +3,12 @@ After=network-online.target
 Description=desc
 
 [Service]
-Environment=source home/$USER/ros2_ws/install/setup.bash
-ExecStart=/bin/bash -c 'source /opt/ros/foxy/setup.bash; source home/$USER/dev_ws/install/setup.bash; ros2 launch rack bringup_launch.py; sleep 60'
+User=sid
+Environment=source home/sid/ros2_ws/install/setup.bash
+ExecStart=/bin/bash -c 'source /opt/ros/humble/setup.bash; source home/sid/ros2_ws/install/setup.bash; ros2 launch rack bringup_launch.py; sleep 60'
 RemainAfterExit=no
 Restart=on-failure
 RestartSec=2s
 
 [Install]
-WantedBy=user.target
+WantedBy=multi-user.target

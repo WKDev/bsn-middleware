@@ -8,7 +8,7 @@ class GPIODriver(Node):
         super().__init__('gpio_driver')
         self.subscription = self.create_subscription(
             Int32MultiArray,
-            '/gpio',
+            'gpio',
             self.led_callback,
             10)
         self.subscription  # prevent unused variable warning
