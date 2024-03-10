@@ -58,12 +58,12 @@ class AGVTeleop(Node):
 
     def basic_stat_callback(self, msg):
         # Display the message from /basicstat
-        print('Received basicstat message:', msg)
+        self.get_logger().info('Received basicstat message:', msg)
         self.basicstat = msg
 
     def batt_stat_callback(self, msg):
         # Display the message from /basicstat
-        print('Received battstat message:', msg) 
+        self.get_logger().info('Received battstat message:', msg) 
 
 class MyApp(QWidget):
     def __init__(self, node):
@@ -79,14 +79,14 @@ class MyApp(QWidget):
         self.work_target_rack = [True,True,True,True,True,True]
 
     def startwork(self,a):
-        print(f"{a}")
+        self.get_logger().info(f"{a}")
         self.work.target_racks = self.work_target_rack
-        print(self.work)
+        self.get_logger().info(self.work)
         self.node.work_pub.publish(self.work)
 
 
     def wc_start_point(self, id):
-        print(id)
+        self.get_logger().info(id)
         self.work.startpoint = id
         if id ==1 : 
             self.ep_radio[0].setChecked(True)
@@ -100,7 +100,7 @@ class MyApp(QWidget):
 
         
     def wc_end_point(self, id):
-        print(id)
+        self.get_logger().info(id)
         self.work.endpoint = id
  
 
@@ -195,7 +195,7 @@ class MyApp(QWidget):
 
         def checkbox_clicked(checked, i):
             self.work_target_rack[i] = checked
-            print(f"Checked data: {self.work_target_rack}")
+            self.get_logger().info(f"Checked data: {self.work_target_rack}")
 
         for i in range(1, 7):
             checkbox = QCheckBox(str(i), self)
@@ -235,7 +235,7 @@ class MyApp(QWidget):
         smart_charging_layout.addLayout(sc_button_layout)
 
         end_charging_checkbox = QCheckBox("End charging automatically when it's done", self)
-        end_charging_checkbox.clicked.connect(lambda checked: print("End charging checkbox is selected"))
+        end_charging_checkbox.clicked.connect(lambda checked: self.get_logger().info("End charging checkbox is selected"))
         smart_charging_layout.addWidget(end_charging_checkbox)
 
         button1.clicked.connect(lambda checked: self.node.charging_pub.publish(AGVChargingCmd(mode=0, auto_close = int(end_charging_checkbox.isChecked()))))

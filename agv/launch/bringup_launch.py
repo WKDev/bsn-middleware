@@ -25,4 +25,19 @@ def generate_launch_description():
             name=f'integration',
             output='screen'
         ),
+        Node(
+            package='agv',
+            namespace=namespace,
+            executable='teleop',
+            name=f'teleop',
+            output='screen'
+        ),
+
+        Node(
+            package='cmd_center',
+            namespace=namespace,
+            executable='work_manager',
+            name=f'work_manager',
+            output='screen'
+        ),
     ])

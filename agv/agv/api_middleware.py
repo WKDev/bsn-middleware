@@ -108,17 +108,17 @@ def parse_basic_stat(cmd, resp):
         on_off_list = ['OFF', 'ON']
 
 
-        # print(f"Operating Status : {int.from_bytes(resp[6:8], 'little')} {operating_status} {op_stat_list[operating_status]}")
-        # print(f"Button State : {button_state}")
+        # self.get_logger().info(f"Operating Status : {int.from_bytes(resp[6:8], 'little')} {operating_status} {op_stat_list[operating_status]}")
+        # self.get_logger().info(f"Button State : {button_state}")
         # for i, button in enumerate(buttons_list):
-        #     print(f"  {button} : {on_off_list[button_state[i]]}")
-        # print(f"System Time : {system_time}")
-        # print(f"Odometer : {odometer}")
-        # print(f"Linear Velocity : {linear_velocity}")
-        # print(f"Angular Velocity : {angular_velocity}")
+        #     self.get_logger().info(f"  {button} : {on_off_list[button_state[i]]}")
+        # self.get_logger().info(f"System Time : {system_time}")
+        # self.get_logger().info(f"Odometer : {odometer}")
+        # self.get_logger().info(f"Linear Velocity : {linear_velocity}")
+        # self.get_logger().info(f"Angular Velocity : {angular_velocity}")
         mode_list= ['Free Navi Mode', 'Map Navigation Mode', 'Tracking Mode', 'Debug Mode', 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,'Forced Turn Mode']
-        # print(f"Current mode : {mode_list[current_mode]}")
-        # print(f"Error code : {error_code}")
+        # self.get_logger().info(f"Current mode : {mode_list[current_mode]}")
+        # self.get_logger().info(f"Error code : {error_code}")
 
         # self.basic_stat.operating_status = parsed['operating_status']
         # self.basic_stat.current_mode = parsed['current_mode']
@@ -153,28 +153,28 @@ def parse_basic_stat(cmd, resp):
                      twist=Twist(linear=Vector3(x=float(linear_velocity)), angular=Vector3(z=float(angular_velocity))), 
                      error_code=['foo','bar'])
     else:
-        print(f"checksum error: {resp}")
+        self.get_logger().info(f"checksum error: {resp}")
 
 def parse_batt_stat(cmd, resp):
     if xor_checksum(resp[2:-1]) == resp[-1]:
-        # print("Checksum OK")
-        # print(f"Node number: {resp[3]}")
-        # print(f"Serial Number: {resp[4]}")
-        # print(f"Response code : {resp[5]}")
+        # self.get_logger().info("Checksum OK")
+        # self.get_logger().info(f"Node number: {resp[3]}")
+        # self.get_logger().info(f"Serial Number: {resp[4]}")
+        # self.get_logger().info(f"Response code : {resp[5]}")
 
         batt_voltage = int.from_bytes(resp[6:8], 'little')
         batt_remain = int.from_bytes(resp[8:10], 'little')
         batt_temp = int.from_bytes(resp[10:12], 'little')
         batt_current = int.from_bytes(resp[14:18], 'little')
-        # print(f"Battery Voltage : {batt_voltage}mV")
-        # print(f"Battery Remain : {batt_remain}%")
-        # print(f"Battery Temperature : {batt_temp}°C")
-        # print(f"Battery Current : {batt_current}mA")
+        # self.get_logger().info(f"Battery Voltage : {batt_voltage}mV")
+        # self.get_logger().info(f"Battery Remain : {batt_remain}%")
+        # self.get_logger().info(f"Battery Temperature : {batt_temp}°C")
+        # self.get_logger().info(f"Battery Current : {batt_current}mA")
 
         return {'voltage': batt_voltage, 'remain': batt_remain, 'temp': batt_temp, 'current': batt_current}
 
     else:
-        print(f"checksum error: {resp}")
+        self.get_logger().info(f"checksum error: {resp}")
 
 def parse_io_stat(cmd, resp):
     if xor_checksum(resp[2:-1]) == resp[-1]:
@@ -184,15 +184,15 @@ def parse_io_stat(cmd, resp):
 
 
     else:
-        print(f"checksum error: {resp}")
+        self.get_logger().info(f"checksum error: {resp}")
 
 
 def parse_magnavi_stat(cmd, resp):
     if xor_checksum(resp[2:-1]) == resp[-1]:
-        # print("Checksum OK")
-        # print(f"Node number: {resp[3]}")
-        # print(f"Serial Number: {resp[4]}")
-        # print(f"Response code : {resp[5]}")
+        # self.get_logger().info("Checksum OK")
+        # self.get_logger().info(f"Node number: {resp[3]}")
+        # self.get_logger().info(f"Serial Number: {resp[4]}")
+        # self.get_logger().info(f"Response code : {resp[5]}")
 
         msg = AGVNavStat()
 
@@ -251,7 +251,7 @@ def parse_magnavi_stat(cmd, resp):
         
 
     else:
-        print(f"checksum error: {resp}")
+        self.get_logger().info(f"checksum error: {resp}")
 
 def set_nav_mode(cmd, mode):
     return frame_protocol(cmd[0], cmd[1], [nav_mode_code[0], mode])
@@ -330,7 +330,7 @@ class APIMiddleware(Node):
         cmd_vel_msg = frame_protocol(0x01, alive_num[1], [teleop_code[0], mode] + list(lin_vel) + list(ang_vel)+[0x00,0x00])
 
         if time.time() - self.last_cmd_updated > 0.1 and self.basic_stat.current_mode == 'Free Navi Mode':
-            print(f"put command into queue {round(time.time() - self.last_cmd_updated ,2)}s")
+            self.get_logger().info(f"put command into queue {round(time.time() - self.last_cmd_updated ,2)}s")
             self.queue.append(cmd_vel_msg)  # Add request to head of queue
             self.alive_queue.append(alive_num)
             self.last_cmd_updated = time.time()
@@ -342,6 +342,8 @@ class APIMiddleware(Node):
 
         alive_num = ['cmd_nav_task',randint(0, 255)]
         cmd_btn_msg = frame_protocol(0, alive_num[1], [navtask_cmd_code[0]]+ target_point)
+        self.clear_queue()
+
         self.queue.append(cmd_btn_msg) 
         self.alive_queue.append(alive_num)
 
@@ -352,9 +354,15 @@ class APIMiddleware(Node):
         end_point = msg.end.to_bytes(4, 'little', signed=True)
         alive_num = ['cmd_nav_init',randint(0, 255)]
         cmd_navinit_msg = frame_protocol(0, alive_num[1], [magnavi_init_code[0], int(msg.target_type)] + list(start_point) + list(end_point)+ [int(msg.direction)])
-        print(cmd_navinit_msg)
+        self.get_logger().info(str(cmd_navinit_msg))
+        self.clear_queue()
+
         self.queue.append(cmd_navinit_msg)
         self.alive_queue.append(alive_num)
+
+    def clear_queue(self):
+        self.queue.clear()
+        self.alive_queue.clear()
 
 
     def button_callback(self, msg):
@@ -362,13 +370,17 @@ class APIMiddleware(Node):
         alive_num = ['cmd_ctrl_btn',randint(0, 255)]
 
         cmd_btn_msg = frame_protocol(0, alive_num[1], [button_op_code[0], msg.data])
-        self.queue.append(cmd_btn_msg) 
+        self.clear_queue()
+        self.queue.append(cmd_btn_msg)
+        self.alive_queue.append(alive_num)
+
 
     def mode_callback(self, msg):
         self.get_logger().info('Received mode: %d' % msg.data)
 
         alive_num = ['cmd_mode',randint(0, 255)]
         cmd_mode_msg= frame_protocol(0, alive_num[1], [nav_mode_code[0], msg.data])
+        self.clear_queue()
         self.queue.append(cmd_mode_msg) 
         self.alive_queue.append(alive_num)
 
@@ -377,6 +389,7 @@ class APIMiddleware(Node):
         self.get_logger().info('Received turnmode: %d' % msg.data)
         alive_num = ['cmd_turnmode',randint(0, 255)]
         cmd_turnmode_msg= frame_protocol(0, alive_num[1], [turn_cmd_code[0], msg.data])
+        self.clear_queue()
         self.queue.append(cmd_turnmode_msg)
         self.alive_queue.append(alive_num)
 
@@ -387,40 +400,43 @@ class APIMiddleware(Node):
 
         alive_num = ['cmd_script',randint(0, 255)]
         cmd_script_msg = frame_protocol(0, alive_num[1], [remote_task_code[0],task_type, msg.data])
+        self.clear_queue()
         self.queue.append(cmd_script_msg)
         self.alive_queue.append(alive_num)
 
     
 
     def connect_and_send(self):
-        print("Connecting to server")
+        self.get_logger().info("Connecting to server")
 
         while True:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(1)
                 sock.connect((endpoint_ip, endpoint_port))
-                print("Connected to server")
+                self.get_logger().info("Connected to server")
                 unanswered_count = 0
 
                 while True:
                     if self.queue:
                         # copy last queue message
-                        message = self.queue[0]
+                        # message = self.queue[0]
+                        message = self.queue.popleft()
+
                         sock.sendall(bytes(message))
-                        # print(f"req: {message}")
-                       
+                        # self.get_logger().info(f"req: {message}")
+                        
                         
                         try:
                             response = list(sock.recv(1024))
                            
                             if xor_checksum(response[2:-1]) == response[-1]:
 
-                                if response[4] == message[4]:
-                                    # print(f"received resp for req : {self.alive_queue[0]}")
-                                    self.queue.popleft()
-                                    self.alive_queue.popleft()
-                                    self.alive_pub.publish(Alive(device_id = 'test_agv_id',device_type = 'agv',is_alive = True, ip = '192.168.11.6'))
+                                # if response[4] == message[4]:
+                                #     # self.get_logger().info(f"received resp for req : {self.alive_queue[0]}")
+                                #     self.queue.popleft()
+                                #     self.alive_queue.popleft()
+                                #     self.alive_pub.publish(Alive(device_id = 'test_agv_id',device_type = 'agv',is_alive = True, ip = '192.168.11.6'))
                                 
                                 if response[5] == basic_stat_code[1]:
                                     parsed = parse_basic_stat(message, response)
@@ -462,15 +478,15 @@ class APIMiddleware(Node):
                                         "The operation failed, it may be an invalid task",
                                         "Task chain compilation failed"
                                     ]
-                                    print(f"resp_msg : {error_list[response[6]]}")
+                                    self.get_logger().info(f"resp_msg : {error_list[response[6]]}")
 
                                 else:
-                                    print("other instruction")
-                                    print(f"req : {message=}")
-                                    print(f"recv : {response=}")
+                                    self.get_logger().info("other instruction")
+                                    self.get_logger().info(f"req : {message=}")
+                                    self.get_logger().info(f"recv : {response=}")
                                     
                             else:
-                                print("xor checksum error")
+                                self.get_logger().info(f"xor checksum error {response} ")
 
                             unanswered_count = 0 
                             response = []
@@ -499,7 +515,7 @@ class APIMiddleware(Node):
                             if unanswered_count >= 3:
 
                                 # save the last queue and clear the queue, then reconnect and send the last queue
-                                print("Error: No answer received for 3 consecutive messages. Reconnecting.")
+                                self.get_logger().info("Error: No answer received for 3 consecutive messages. Reconnecting.")
                                 self.queue.clear()
                                 sock.close()
                                 self.alive_pub.publish(Alive(device_id = 'test_agv_id',device_type = 'agv',is_alive = False, ip = '192.168.11.6'))
@@ -508,7 +524,7 @@ class APIMiddleware(Node):
 
 
                         except:
-                            print(f"error : {traceback.format_exc()}")
+                            self.get_logger().info(f"error : {traceback.format_exc()}")
 
                     else:
                         # TODO sends default data request.
@@ -536,7 +552,7 @@ class APIMiddleware(Node):
                         # self.queue.append(self.batt_stat_msg)
                             
             except:
-                print(f"error : {traceback.format_exc()}")
+                self.get_logger().info(f"error : {traceback.format_exc()}")
                 time.sleep(1)
 
             
