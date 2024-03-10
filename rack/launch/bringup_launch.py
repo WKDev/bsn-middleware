@@ -1,8 +1,9 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-import os
-namespace = 'rack_1'
+import os, socket
 
+# use the namespace as the name of this computer
+namespace = socket.gethostname()
 def generate_launch_description():
     return LaunchDescription([
         Node(
