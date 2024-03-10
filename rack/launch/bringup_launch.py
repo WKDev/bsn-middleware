@@ -23,6 +23,12 @@ def generate_launch_description():
             package='rack',
             namespace=namespace,
             executable='env_manager',
-            name=f'led_manager'
+            name=f'env_manager'
+        ),
+        Node(
+            package='rack',
+            namespace=namespace,
+            executable='alive',
+            name=f'alive'
         ),
     ])
