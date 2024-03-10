@@ -3,9 +3,7 @@ from launch_ros.actions import Node
 import os, socket
 
 # use the namespace as the name of this computer
-namespace = socket.gethostname()
-
-namespace=namespace.replace('-', '_')  # replace hyphens with underscores 
+namespace = socket.gethostname().replace('-', '_') 
 
 def generate_launch_description():
     return LaunchDescription([
