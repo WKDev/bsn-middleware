@@ -4,6 +4,9 @@ import os, socket
 
 # use the namespace as the name of this computer
 namespace = socket.gethostname()
+
+namespace.replace('-', '_')  # replace hyphens with underscores 
+
 def generate_launch_description():
     return LaunchDescription([
         Node(
