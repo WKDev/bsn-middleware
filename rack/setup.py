@@ -26,7 +26,7 @@ setup(
             "gpio_driver = rack.gpio_driver:main",
             "rs485_driver = rack.rs485_driver:main",
             "env_manager = rack.env_manager:main",
-            'teleop_rack = agv.teleop_rack:main',
+            'teleop_rack = rack.teleop_rack:main',
         ],
     },
 )

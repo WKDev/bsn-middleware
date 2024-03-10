@@ -1,26 +1,28 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
 import os
-namespace = 'rack_1'
+namespace = 'agv_1'
 
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package='rack',
+            package='agv',
             namespace=namespace,
-            executable='rs485_driver',
-            name=f'rs485_driver'
+            executable='api_middleware',
+            name=f'api_middleware',
+            output='screen'
         ),
         Node(
-            package='rack',
+            package='agv',
             namespace=namespace,
-            executable='gpio_driver',
-            name=f'gpio_driver'
+            executable='teleop_gamepad',
+            name=f'teleop_gamepad'
         ),
         Node(
-            package='rack',
+            package='agv',
             namespace=namespace,
-            executable='env_manager',
-            name=f'env_manager'
+            executable='integration',
+            name=f'integration',
+            output='screen'
         ),
     ])

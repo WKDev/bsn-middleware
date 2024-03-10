@@ -153,7 +153,7 @@ class WorkManager(Node):
 
         if wait:
             while self.nav_stat.current != target_pos:
-                print(f"moving agv, target : {self.nav_stat.target} passed : {self.nav_stat.prev} current : {self.nav_stat.current} planning : {self.nav_stat.planning}")
+                print(f"moving agv, target : {self.nav_stat.target} passed : {self.nav_stat.prev} current : {self.nav_stat.current} next : {self.nav_stat.next}")
                 if retraction_once and auto_retraction and self.nav_stat.current in self.auto_retraction_points and target_pos in self.rack_points:
                     print("auto retraction")
                     self.lift_down()

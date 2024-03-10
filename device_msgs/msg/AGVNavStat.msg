@@ -1,7 +1,7 @@
 int32 target
 int32 current
 int32 prev
-int32 planning
+int32 next
 int64 odom
 int32 speed
 int32 obstacle_avoid_type

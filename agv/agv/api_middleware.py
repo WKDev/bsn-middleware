@@ -7,7 +7,7 @@
 import rclpy
 from rclpy.node import Node
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Vector3
 from std_msgs.msg import Int32, Int32MultiArray, Bool
 from device_msgs.msg import Alive, AGVBasicStat, AGVBattStat, AGVNavInit, AGVNavStat, AGVIo
 import threading
@@ -86,14 +86,28 @@ def parse_basic_stat(cmd, resp):
         button_state = to_binary(int.from_bytes(resp[8:10], 'little'),4)
         uptime = int.from_bytes(resp[10:14], 'little')
         odometer = int.from_bytes(resp[14:18], 'little')
+
+        # convert to signed int
+        odometer = odometer if odometer < 0x80000000 else odometer - 0x100000000
+
         linear_velocity = int.from_bytes(resp[18:20], 'little')
+
+        # convert to signed int
+        linear_velocity = linear_velocity if linear_velocity < 0x8000 else linear_velocity - 0x10000
+
         angular_velocity = int.from_bytes(resp[20:22], 'little')
+
+        # convert to signed int
+        angular_velocity = angular_velocity if angular_velocity < 0x8000 else angular_velocity - 0x10000
+
         current_mode = int.from_bytes(resp[22:24], 'little')
         error_code = ''.join([f"{byte:02x}" for byte in resp[24:44]])
 
         buttons_list = ['Start', 'Stop', 'E-Stop','Reset', 'Collision']
         op_stat_list = ['STOP','RUN', 'RESET']
         on_off_list = ['OFF', 'ON']
+
+
         # print(f"Operating Status : {int.from_bytes(resp[6:8], 'little')} {operating_status} {op_stat_list[operating_status]}")
         # print(f"Button State : {button_state}")
         # for i, button in enumerate(buttons_list):
@@ -106,8 +120,38 @@ def parse_basic_stat(cmd, resp):
         # print(f"Current mode : {mode_list[current_mode]}")
         # print(f"Error code : {error_code}")
 
-        return {'node_number': resp[3], 'serial_number': resp[4], 'response_code': resp[5], 'operating_status': op_stat_list[operating_status], 'button_state': button_state, 'uptime': uptime, 'odometer': odometer, 'linear_velocity': linear_velocity, 'angular_velocity': angular_velocity, 'current_mode': mode_list[current_mode], 'error_code': error_code}
+        # self.basic_stat.operating_status = parsed['operating_status']
+        # self.basic_stat.current_mode = parsed['current_mode']
+        # self.basic_stat.start_btn = parsed['button_state'][0]
+        # self.basic_stat.stop_btn = parsed['button_state'][1]
+        # self.basic_stat.e_stop_btn = parsed['button_state'][2]
+        # self.basic_stat.reset_btn = parsed['button_state'][3]
+        # self.basic_stat.collision_btn = parsed['button_state'][4]
+        # self.basic_stat.uptime = parsed['uptime']
+        # self.basic_stat.odometer = parsed['odometer']
+        # self.basic_stat.twist.linear.x = float(parsed['linear_velocity'])
+        # self.basic_stat.twist.linear.y = 0.0
+        # self.basic_stat.twist.linear.z = 0.0
+        # self.basic_stat.twist.angular.x = 0.0
+        # self.basic_stat.twist.angular.y = 0.0
+        # self.basic_stat.twist.angular.z = float(parsed['angular_velocity'])
+        # self.basic_stat.error_code = ['foo','bar']
 
+        
+
+
+        # return {'node_number': resp[3], 'serial_number': resp[4], 'response_code': resp[5], 'operating_status': op_stat_list[operating_status], 'button_state': button_state, 'uptime': uptime, 'odometer': odometer, 'linear_velocity': linear_velocity, 'angular_velocity': angular_velocity, 'current_mode': mode_list[current_mode], 'error_code': error_code}
+        return AGVBasicStat(operating_status=op_stat_list[operating_status], 
+                     current_mode=mode_list[current_mode], 
+                     start_btn=button_state[0], 
+                     stop_btn=button_state[1], 
+                     e_stop_btn=button_state[2], 
+                     reset_btn=button_state[3], 
+                     collision_btn=button_state[4], 
+                     uptime=uptime, 
+                     odometer=odometer, 
+                     twist=Twist(linear=Vector3(x=float(linear_velocity)), angular=Vector3(z=float(angular_velocity))), 
+                     error_code=['foo','bar'])
     else:
         print(f"checksum error: {resp}")
 
@@ -155,7 +199,7 @@ def parse_magnavi_stat(cmd, resp):
         msg.target = int.from_bytes(resp[6:8], 'little')
         msg.current = int.from_bytes(resp[8:10], 'little')
         msg.prev = int.from_bytes(resp[10:12], 'little')
-        msg.planning = int.from_bytes(resp[12:14], 'little')
+        msg.next = int.from_bytes(resp[12:14], 'little')
         msg.odom = int.from_bytes(resp[14:18], 'little')
         msg.speed = int.from_bytes(resp[18:20], 'little')
         msg.obstacle_avoid_type = int.from_bytes(resp[20:22], 'little')
@@ -191,7 +235,7 @@ def parse_magnavi_stat(cmd, resp):
         else:
             msg.mag_init_stat = "not initialized"
         
-        if permeability_stat[5] == 1:
+        if permeability_stat[5] == 0:
             msg.direction = "forward"
 
         else:
@@ -234,13 +278,14 @@ endpoint_port = 8899
 class APIMiddleware(Node):
     def __init__(self):
         super().__init__('api_middleware')
+        self.get_logger().info(f'{self.get_namespace()} API Middleware started')
 
-        self.basic_pub = self.create_publisher(AGVBasicStat, '/basic_stat', 100)
-        self.batt_pub = self.create_publisher(AGVBattStat, '/batt_stat', 100)
-        self.nav_pub = self.create_publisher(AGVNavStat, '/nav_stat', 100)
-        self.alive_pub = self.create_publisher(Alive, '/alive', 100)
-        self.io_pub = self.create_publisher(AGVIo, '/io_stat', 100)
-        self.lift_pub = self.create_publisher(Int32MultiArray, '/lift_stat', 100)
+        self.basic_pub = self.create_publisher(AGVBasicStat, 'basic_stat', 100)
+        self.batt_pub = self.create_publisher(AGVBattStat, 'batt_stat', 100)
+        self.nav_pub = self.create_publisher(AGVNavStat, 'nav_stat', 100)
+        self.alive_pub = self.create_publisher(Alive, 'alive', 100)
+        self.io_pub = self.create_publisher(AGVIo, 'io_stat', 100)
+        self.lift_pub = self.create_publisher(Int32MultiArray, 'lift_stat', 100)
         # self.alive_timer = self.create_timer(1, self.alive_callback)
 
 
@@ -257,13 +302,13 @@ class APIMiddleware(Node):
         self.last_stat_updated = 0
         self.stat_update_rate = 0.2
 
-        self.vel_sub = self.create_subscription(Twist,'/cmd_vel',self.cmd_vel_callback,10)
-        self.btn_sub = self.create_subscription(Int32,'/cmd_btn',self.button_callback,10)
-        self.mode_sub = self.create_subscription(Int32,'/cmd_mode',self.mode_callback,10)
-        self.task_sub = self.create_subscription(Int32,'/cmd_navtask',self.cmd_nav_task_callback,10)
-        self.navinit_sub = self.create_subscription(AGVNavInit,'/cmd_navinit',self.cmd_navinit_callback,10)
-        self.turnmode_sub = self.create_subscription(Int32,'/cmd_turnmode',self.cmd_turnmode_callback,10)
-        self.remote_task_sub = self.create_subscription(Int32,'/cmd_task',self.cmd_remotetask_callback,10)
+        self.vel_sub = self.create_subscription(Twist,'cmd_vel',self.cmd_vel_callback,10)
+        self.btn_sub = self.create_subscription(Int32,'cmd_btn',self.button_callback,10)
+        self.mode_sub = self.create_subscription(Int32,'cmd_mode',self.mode_callback,10)
+        self.task_sub = self.create_subscription(Int32,'cmd_navtask',self.cmd_nav_task_callback,10)
+        self.navinit_sub = self.create_subscription(AGVNavInit,'cmd_navinit',self.cmd_navinit_callback,10)
+        self.turnmode_sub = self.create_subscription(Int32,'cmd_turnmode',self.cmd_turnmode_callback,10)
+        self.remote_task_sub = self.create_subscription(Int32,'cmd_task',self.cmd_remotetask_callback,10)
 
         self.queue = deque([])
         self.alive_queue = deque([])
@@ -369,7 +414,7 @@ class APIMiddleware(Node):
                         try:
                             response = list(sock.recv(1024))
                            
-                            if xor_checksum(response[2:-1]) == response[-1] or True:
+                            if xor_checksum(response[2:-1]) == response[-1]:
 
                                 if response[4] == message[4]:
                                     # print(f"received resp for req : {self.alive_queue[0]}")
@@ -379,36 +424,15 @@ class APIMiddleware(Node):
                                 
                                 if response[5] == basic_stat_code[1]:
                                     parsed = parse_basic_stat(message, response)
-                                    
-                                    self.basic_stat.operating_status = parsed['operating_status']
-                                    self.basic_stat.current_mode = parsed['current_mode']
-                                    self.basic_stat.start_btn = parsed['button_state'][0]
-                                    self.basic_stat.stop_btn = parsed['button_state'][1]
-                                    self.basic_stat.e_stop_btn = parsed['button_state'][2]
-                                    self.basic_stat.reset_btn = parsed['button_state'][3]
-                                    self.basic_stat.collision_btn = parsed['button_state'][4]
-                                    self.basic_stat.uptime = parsed['uptime']
-                                    self.basic_stat.odometer = parsed['odometer']
-                                    self.basic_stat.twist.linear.x = float(parsed['linear_velocity'])
-                                    self.basic_stat.twist.linear.y = 0.0
-                                    self.basic_stat.twist.linear.z = 0.0
-                                    self.basic_stat.twist.angular.x = 0.0
-                                    self.basic_stat.twist.angular.y = 0.0
-                                    self.basic_stat.twist.angular.z = float(parsed['angular_velocity'])
-                                    self.basic_stat.error_code = ['foo','bar']
-                                    # print(self.basic_stat)
-                                    self.basic_pub.publish(self.basic_stat)
+                                    self.basic_pub.publish(parsed)
 
                                 elif response[5] == batt_stat_code[1]:
                                     parsed = parse_batt_stat(message, response)
 
-                                    self.batt_stat.voltage = round(float(parsed['voltage'])/1000.0,3)
-                                    self.batt_stat.current = parsed['current']
-
-
-                                    self.batt_stat.remain = parsed['remain']
-                                    self.batt_stat.temp = parsed['temp']
-                                    self.batt_pub.publish(self.batt_stat)
+                                    self.batt_pub.publish(AGVBattStat(voltage=round(float(parsed['voltage'])/1000.0,3), 
+                                                                      current=parsed['current'], 
+                                                                      remain=parsed['remain'], 
+                                                                      temp=parsed['temp']))
 
                                 elif response[5] == magnavi_stat_query_code[1]:
                                     parsed = parse_magnavi_stat(message, response)
@@ -447,7 +471,6 @@ class APIMiddleware(Node):
                                     
                             else:
                                 print("xor checksum error")
-                                print("expected : ")
 
                             unanswered_count = 0 
                             response = []

@@ -1,5 +1,6 @@
 from setuptools import find_packages, setup
 import os, glob
+
 package_name = 'agv'
 
 setup(
@@ -28,12 +29,9 @@ setup(
             'led_manager = agv.led_manager:main',
             'teleop_gamepad = agv.teleop_gamepad:main',
             'work_manager = agv.work_manager:main',
-            'dummy_feeder = agv.dummy_feeder:main'
-
-
+            'dummy_feeder = agv.dummy_feeder:main',
+            'integration = agv.integration:main'
         ],
-        'rqt_gui_plugins': [
-        'teleop = agv.teleop:main',
-         ],
+
     },
 )

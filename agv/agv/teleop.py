@@ -21,8 +21,8 @@ class AGVTeleop(Node):
         self.work_pub = self.create_publisher(AGVWorkCmd, 'cmd_work', 10)
         self.charging_pub = self.create_publisher(AGVChargingCmd, 'cmd_charging', 10)
 
-        self.basicstat_sub = self.create_subscription(AGVBasicStat, '/basic_stat', self.basic_stat_callback, 10)
-        self.battstat_sub = self.create_subscription(AGVBattStat, '/batt_stat', self.batt_stat_callback, 10)
+        self.basicstat_sub = self.create_subscription(AGVBasicStat, 'basic_stat', self.basic_stat_callback, 10)
+        self.battstat_sub = self.create_subscription(AGVBattStat, 'batt_stat', self.batt_stat_callback, 10)
 
         self.basicstat_textbrowser = None
         self.basicstat = AGVBasicStat()
