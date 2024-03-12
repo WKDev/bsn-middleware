@@ -317,25 +317,30 @@ class WorkManager(Node):
                     racks = racks[::-1]
 
                 for r in racks: 
-                    self.get_logger().info(f"{r}")
+                    self.get_logger().info(f"current target rack for work:{r}")
                     time.sleep(1)
 
                     if current_work.startpoint:
                         self.lift_down(wait=True)
+                        time.sleep(0.2)
                         self.navtarget(20+r, wait=True, auto_retraction=True, autostart = True,stop_after_done=False)
                         self.lift_up(wait=True)
+                        time.sleep(0.2)
                         self.navtarget(r, wait=True, auto_retraction=False, autostart = False, stop_after_done=False)
                         self.lift_down(wait=True)
                         
                     else:
                         self.lift_down(wait=True)
+                        time.sleep(0.2)
                         self.navtarget(r, wait=True, auto_retraction=True, autostart = True,stop_after_done=False)
+                        time.sleep(0.2)
                         self.lift_up(wait=True)
                         # self.navtarget(17, wait=True, auto_retraction=True, autostart = True, stop_after_done=True)
                         self.navtarget(17, wait=True, auto_retraction=True, autostart = True, stop_after_done=True)
-                        self.control_btn('stop')
-                        # self.control_btn('stop')
+
+                        time.sleep(0.2)
                         self.navtarget(20+r, wait=True, auto_retraction=False, autostart = False, stop_after_done=False)
+                        time.sleep(0.2)
                         self.lift_down(wait=True)
 
                 self.work_state = False

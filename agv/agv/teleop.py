@@ -8,11 +8,12 @@ from device_msgs.msg import AGVBasicStat, AGVBattStat, AGVNavInit, AGVWorkCmd, A
 from PyQt5.QtWidgets import QTextEdit, QTextBrowser
 import threading
 import time
+import logging
 
 
 class AGVTeleop(Node):
     def __init__(self):
-        super().__init__('agv_teleop')
+        super().__init__('agv_teleop_publisher')
         self.mode_pub_ = self.create_publisher(Int32, 'cmd_mode', 10)
         self.btn_pub_ = self.create_publisher(Int32, 'cmd_btn', 10)
         self.task_pub_ = self.create_publisher(Int32, 'cmd_navtask', 10)
@@ -65,9 +66,9 @@ class AGVTeleop(Node):
         # Display the message from /basicstat
         self.get_logger().info('Received battstat message:', msg) 
 
-class MyApp(QWidget):
+class MyApp(QWidget, Node):
     def __init__(self, node):
-        super().__init__()
+        super().__init__(node_name = 'teleop_gui')
         self.node = node
         self.work = AGVWorkCmd(startpoint= 0, endpoint = 1)
         self.ep_radio = []
@@ -79,14 +80,14 @@ class MyApp(QWidget):
         self.work_target_rack = [True,True,True,True,True,True]
 
     def startwork(self,a):
-        self.get_logger().info(f"{a}")
+        print(f"{a}")
         self.work.target_racks = self.work_target_rack
-        self.get_logger().info(self.work)
+        print(self.work)
         self.node.work_pub.publish(self.work)
 
 
     def wc_start_point(self, id):
-        self.get_logger().info(id)
+        print(id)
         self.work.startpoint = id
         if id ==1 : 
             self.ep_radio[0].setChecked(True)
@@ -100,7 +101,7 @@ class MyApp(QWidget):
 
         
     def wc_end_point(self, id):
-        self.get_logger().info(id)
+        print(id)
         self.work.endpoint = id
  
 
@@ -195,7 +196,7 @@ class MyApp(QWidget):
 
         def checkbox_clicked(checked, i):
             self.work_target_rack[i] = checked
-            self.get_logger().info(f"Checked data: {self.work_target_rack}")
+            print(f"Checked data: {self.work_target_rack}")
 
         for i in range(1, 7):
             checkbox = QCheckBox(str(i), self)
@@ -235,7 +236,7 @@ class MyApp(QWidget):
         smart_charging_layout.addLayout(sc_button_layout)
 
         end_charging_checkbox = QCheckBox("End charging automatically when it's done", self)
-        end_charging_checkbox.clicked.connect(lambda checked: self.get_logger().info("End charging checkbox is selected"))
+        end_charging_checkbox.clicked.connect(lambda checked: print("End charging checkbox is selected"))
         smart_charging_layout.addWidget(end_charging_checkbox)
 
         button1.clicked.connect(lambda checked: self.node.charging_pub.publish(AGVChargingCmd(mode=0, auto_close = int(end_charging_checkbox.isChecked()))))
