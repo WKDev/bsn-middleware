@@ -1,0 +1,15 @@
+string current_mode
+int32 current_alarm
+string is_moving
+float32 joint_j1
+float32 joint_j2
+float32 joint_j3
+float32 joint_j4
+float32 joint_j5
+float32 joint_j6
+float32 world_x
+float32 world_y
+float32 world_z
+float32 world_u
+float32 world_v
+float32 world_w

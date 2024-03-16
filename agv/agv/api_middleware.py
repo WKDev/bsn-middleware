@@ -81,177 +81,163 @@ def to_binary(int_val,bytes):
 
 
 def parse_basic_stat(cmd, resp):
-    if xor_checksum(resp[2:-1]) == resp[-1]:
-        operating_status = int.from_bytes(resp[6:8], 'little')
-        button_state = to_binary(int.from_bytes(resp[8:10], 'little'),4)
-        uptime = int.from_bytes(resp[10:14], 'little')
-        odometer = int.from_bytes(resp[14:18], 'little')
+    operating_status = int.from_bytes(resp[6:8], 'little')
+    button_state = to_binary(int.from_bytes(resp[8:10], 'little'),4)
+    uptime = int.from_bytes(resp[10:14], 'little')
+    odometer = int.from_bytes(resp[14:18], 'little')
 
-        # convert to signed int
-        odometer = odometer if odometer < 0x80000000 else odometer - 0x100000000
+    # convert to signed int
+    odometer = odometer if odometer < 0x80000000 else odometer - 0x100000000
 
-        linear_velocity = int.from_bytes(resp[18:20], 'little')
+    linear_velocity = int.from_bytes(resp[18:20], 'little')
 
-        # convert to signed int
-        linear_velocity = linear_velocity if linear_velocity < 0x8000 else linear_velocity - 0x10000
+    # convert to signed int
+    linear_velocity = linear_velocity if linear_velocity < 0x8000 else linear_velocity - 0x10000
 
-        angular_velocity = int.from_bytes(resp[20:22], 'little')
+    angular_velocity = int.from_bytes(resp[20:22], 'little')
 
-        # convert to signed int
-        angular_velocity = angular_velocity if angular_velocity < 0x8000 else angular_velocity - 0x10000
+    # convert to signed int
+    angular_velocity = angular_velocity if angular_velocity < 0x8000 else angular_velocity - 0x10000
 
-        current_mode = int.from_bytes(resp[22:24], 'little')
-        error_code = ''.join([f"{byte:02x}" for byte in resp[24:44]])
+    current_mode = int.from_bytes(resp[22:24], 'little')
+    error_code = ''.join([f"{byte:02x}" for byte in resp[24:44]])
 
-        buttons_list = ['Start', 'Stop', 'E-Stop','Reset', 'Collision']
-        op_stat_list = ['STOP','RUN', 'RESET']
-        on_off_list = ['OFF', 'ON']
-
-
-        # self.get_logger().info(f"Operating Status : {int.from_bytes(resp[6:8], 'little')} {operating_status} {op_stat_list[operating_status]}")
-        # self.get_logger().info(f"Button State : {button_state}")
-        # for i, button in enumerate(buttons_list):
-        #     self.get_logger().info(f"  {button} : {on_off_list[button_state[i]]}")
-        # self.get_logger().info(f"System Time : {system_time}")
-        # self.get_logger().info(f"Odometer : {odometer}")
-        # self.get_logger().info(f"Linear Velocity : {linear_velocity}")
-        # self.get_logger().info(f"Angular Velocity : {angular_velocity}")
-        mode_list= ['Free Navi Mode', 'Map Navigation Mode', 'Tracking Mode', 'Debug Mode', 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,'Forced Turn Mode']
-        # self.get_logger().info(f"Current mode : {mode_list[current_mode]}")
-        # self.get_logger().info(f"Error code : {error_code}")
-
-        # self.basic_stat.operating_status = parsed['operating_status']
-        # self.basic_stat.current_mode = parsed['current_mode']
-        # self.basic_stat.start_btn = parsed['button_state'][0]
-        # self.basic_stat.stop_btn = parsed['button_state'][1]
-        # self.basic_stat.e_stop_btn = parsed['button_state'][2]
-        # self.basic_stat.reset_btn = parsed['button_state'][3]
-        # self.basic_stat.collision_btn = parsed['button_state'][4]
-        # self.basic_stat.uptime = parsed['uptime']
-        # self.basic_stat.odometer = parsed['odometer']
-        # self.basic_stat.twist.linear.x = float(parsed['linear_velocity'])
-        # self.basic_stat.twist.linear.y = 0.0
-        # self.basic_stat.twist.linear.z = 0.0
-        # self.basic_stat.twist.angular.x = 0.0
-        # self.basic_stat.twist.angular.y = 0.0
-        # self.basic_stat.twist.angular.z = float(parsed['angular_velocity'])
-        # self.basic_stat.error_code = ['foo','bar']
-
-        
+    buttons_list = ['Start', 'Stop', 'E-Stop','Reset', 'Collision']
+    op_stat_list = ['STOP','RUN', 'RESET']
+    on_off_list = ['OFF', 'ON']
 
 
-        # return {'node_number': resp[3], 'serial_number': resp[4], 'response_code': resp[5], 'operating_status': op_stat_list[operating_status], 'button_state': button_state, 'uptime': uptime, 'odometer': odometer, 'linear_velocity': linear_velocity, 'angular_velocity': angular_velocity, 'current_mode': mode_list[current_mode], 'error_code': error_code}
-        return AGVBasicStat(operating_status=op_stat_list[operating_status], 
-                     current_mode=mode_list[current_mode], 
-                     start_btn=button_state[0], 
-                     stop_btn=button_state[1], 
-                     e_stop_btn=button_state[2], 
-                     reset_btn=button_state[3], 
-                     collision_btn=button_state[4], 
-                     uptime=uptime, 
-                     odometer=odometer, 
-                     twist=Twist(linear=Vector3(x=float(linear_velocity)), angular=Vector3(z=float(angular_velocity))), 
-                     error_code=['foo','bar'])
-    else:
-        self.get_logger().info(f"checksum error: {resp}")
+    # self.get_logger().info(f"Operating Status : {int.from_bytes(resp[6:8], 'little')} {operating_status} {op_stat_list[operating_status]}")
+    # self.get_logger().info(f"Button State : {button_state}")
+    # for i, button in enumerate(buttons_list):
+    #     self.get_logger().info(f"  {button} : {on_off_list[button_state[i]]}")
+    # self.get_logger().info(f"System Time : {system_time}")
+    # self.get_logger().info(f"Odometer : {odometer}")
+    # self.get_logger().info(f"Linear Velocity : {linear_velocity}")
+    # self.get_logger().info(f"Angular Velocity : {angular_velocity}")
+    mode_list= ['Free Navi Mode', 'Map Navigation Mode', 'Tracking Mode', 'Debug Mode', 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,'Forced Turn Mode']
+    # self.get_logger().info(f"Current mode : {mode_list[current_mode]}")
+    # self.get_logger().info(f"Error code : {error_code}")
+
+    # self.basic_stat.operating_status = parsed['operating_status']
+    # self.basic_stat.current_mode = parsed['current_mode']
+    # self.basic_stat.start_btn = parsed['button_state'][0]
+    # self.basic_stat.stop_btn = parsed['button_state'][1]
+    # self.basic_stat.e_stop_btn = parsed['button_state'][2]
+    # self.basic_stat.reset_btn = parsed['button_state'][3]
+    # self.basic_stat.collision_btn = parsed['button_state'][4]
+    # self.basic_stat.uptime = parsed['uptime']
+    # self.basic_stat.odometer = parsed['odometer']
+    # self.basic_stat.twist.linear.x = float(parsed['linear_velocity'])
+    # self.basic_stat.twist.linear.y = 0.0
+    # self.basic_stat.twist.linear.z = 0.0
+    # self.basic_stat.twist.angular.x = 0.0
+    # self.basic_stat.twist.angular.y = 0.0
+    # self.basic_stat.twist.angular.z = float(parsed['angular_velocity'])
+    # self.basic_stat.error_code = ['foo','bar']
+
+    
+
+
+    # return {'node_number': resp[3], 'serial_number': resp[4], 'response_code': resp[5], 'operating_status': op_stat_list[operating_status], 'button_state': button_state, 'uptime': uptime, 'odometer': odometer, 'linear_velocity': linear_velocity, 'angular_velocity': angular_velocity, 'current_mode': mode_list[current_mode], 'error_code': error_code}
+    return AGVBasicStat(operating_status=op_stat_list[operating_status], 
+                    current_mode=mode_list[current_mode], 
+                    start_btn=button_state[0], 
+                    stop_btn=button_state[1], 
+                    e_stop_btn=button_state[2], 
+                    reset_btn=button_state[3], 
+                    collision_btn=button_state[4], 
+                    uptime=uptime, 
+                    odometer=odometer, 
+                    twist=Twist(linear=Vector3(x=float(linear_velocity)), angular=Vector3(z=float(angular_velocity))), 
+                    error_code=['foo','bar'])
 
 def parse_batt_stat(cmd, resp):
-    if xor_checksum(resp[2:-1]) == resp[-1]:
         # self.get_logger().info("Checksum OK")
         # self.get_logger().info(f"Node number: {resp[3]}")
         # self.get_logger().info(f"Serial Number: {resp[4]}")
         # self.get_logger().info(f"Response code : {resp[5]}")
 
-        batt_voltage = int.from_bytes(resp[6:8], 'little')
-        batt_remain = int.from_bytes(resp[8:10], 'little')
-        batt_temp = int.from_bytes(resp[10:12], 'little')
-        batt_current = int.from_bytes(resp[14:18], 'little')
-        # self.get_logger().info(f"Battery Voltage : {batt_voltage}mV")
-        # self.get_logger().info(f"Battery Remain : {batt_remain}%")
-        # self.get_logger().info(f"Battery Temperature : {batt_temp}°C")
-        # self.get_logger().info(f"Battery Current : {batt_current}mA")
+    batt_voltage = int.from_bytes(resp[6:8], 'little')
+    batt_remain = int.from_bytes(resp[8:10], 'little')
+    batt_temp = int.from_bytes(resp[10:12], 'little')
+    batt_current = int.from_bytes(resp[14:18], 'little')
+    # self.get_logger().info(f"Battery Voltage : {batt_voltage}mV")
+    # self.get_logger().info(f"Battery Remain : {batt_remain}%")
+    # self.get_logger().info(f"Battery Temperature : {batt_temp}°C")
+    # self.get_logger().info(f"Battery Current : {batt_current}mA")
 
-        return {'voltage': batt_voltage, 'remain': batt_remain, 'temp': batt_temp, 'current': batt_current}
+    return {'voltage': batt_voltage, 'remain': batt_remain, 'temp': batt_temp, 'current': batt_current}
 
-    else:
-        self.get_logger().info(f"checksum error: {resp}")
 
 def parse_io_stat(cmd, resp):
-    if xor_checksum(resp[2:-1]) == resp[-1]:
-        input_stat = to_binary(int.from_bytes(resp[6:14], 'little'),8)
-        output_stat = to_binary(int.from_bytes(resp[14:22], 'little'),8)
-        return AGVIo(input=input_stat, output=output_stat)
+    input_stat = to_binary(int.from_bytes(resp[6:14], 'little'),8)
+    output_stat = to_binary(int.from_bytes(resp[14:22], 'little'),8)
+    return AGVIo(input=input_stat, output=output_stat)
 
-
-    else:
-        self.get_logger().info(f"checksum error: {resp}")
 
 
 def parse_magnavi_stat(cmd, resp):
-    if xor_checksum(resp[2:-1]) == resp[-1]:
-        # self.get_logger().info("Checksum OK")
-        # self.get_logger().info(f"Node number: {resp[3]}")
-        # self.get_logger().info(f"Serial Number: {resp[4]}")
-        # self.get_logger().info(f"Response code : {resp[5]}")
+    # self.get_logger().info("Checksum OK")
+    # self.get_logger().info(f"Node number: {resp[3]}")
+    # self.get_logger().info(f"Serial Number: {resp[4]}")
+    # self.get_logger().info(f"Response code : {resp[5]}")
 
-        msg = AGVNavStat()
+    msg = AGVNavStat()
 
-        msg.target = int.from_bytes(resp[6:8], 'little')
-        msg.current = int.from_bytes(resp[8:10], 'little')
-        msg.prev = int.from_bytes(resp[10:12], 'little')
-        msg.next = int.from_bytes(resp[12:14], 'little')
-        msg.odom = int.from_bytes(resp[14:18], 'little')
-        msg.speed = int.from_bytes(resp[18:20], 'little')
-        msg.obstacle_avoid_type = int.from_bytes(resp[20:22], 'little')
-        turn_mode = int.from_bytes(resp[22:24], 'little')
-        turn_mode_list = [0,'Left Fork', 'Right Fork', 'Straight', 'L90', 'L180', 'R90', 'R180']
-        msg.turn_mode = str(turn_mode_list[int(turn_mode)])
-        permeability_stat = to_binary(int.from_bytes(resp[24:26], 'little'),2)
+    msg.target = int.from_bytes(resp[6:8], 'little')
+    msg.current = int.from_bytes(resp[8:10], 'little')
+    msg.prev = int.from_bytes(resp[10:12], 'little')
+    msg.next = int.from_bytes(resp[12:14], 'little')
+    msg.odom = int.from_bytes(resp[14:18], 'little')
+    msg.speed = int.from_bytes(resp[18:20], 'little')
+    msg.obstacle_avoid_type = int.from_bytes(resp[20:22], 'little')
+    turn_mode = int.from_bytes(resp[22:24], 'little')
+    turn_mode_list = [0,'Left Fork', 'Right Fork', 'Straight', 'L90', 'L180', 'R90', 'R180']
+    msg.turn_mode = str(turn_mode_list[int(turn_mode)])
+    permeability_stat = to_binary(int.from_bytes(resp[24:26], 'little'),2)
 
-        if permeability_stat[0] == 1:
-            msg.task_stat = "completed"
-        else:
-            msg.task_stat = "in progress"
-        
-        if permeability_stat[1] == 1:
-            msg.in_orbit_stat = "on line"
-        else:
-            msg.in_orbit_stat = "out line"
-        
-        if permeability_stat[2] == 0:
-            if permeability_stat[3] == 0:
-                msg.mag_fail_msg = "no error"
-            elif permeability_stat[3] == 1:
-                msg.mag_fail_msg = "slow zone obstacle"
-        
-        if permeability_stat[2] == 1:
-            if permeability_stat[3] == 0:
-                msg.mag_fail_msg = "barrier detected"
-            elif permeability_stat[3] == 1:
-                msg.mag_fail_msg = "e-stop zone obstacle"
+    if permeability_stat[0] == 1:
+        msg.task_stat = "completed"
+    else:
+        msg.task_stat = "in progress"
+    
+    if permeability_stat[1] == 1:
+        msg.in_orbit_stat = "on line"
+    else:
+        msg.in_orbit_stat = "out line"
+    
+    if permeability_stat[2] == 0:
+        if permeability_stat[3] == 0:
+            msg.mag_fail_msg = "no error"
+        elif permeability_stat[3] == 1:
+            msg.mag_fail_msg = "slow zone obstacle"
+    
+    if permeability_stat[2] == 1:
+        if permeability_stat[3] == 0:
+            msg.mag_fail_msg = "barrier detected"
+        elif permeability_stat[3] == 1:
+            msg.mag_fail_msg = "e-stop zone obstacle"
 
-        if permeability_stat[4] == 1:
-            msg.mag_init_stat = "initialized"
-        else:
-            msg.mag_init_stat = "not initialized"
-        
-        if permeability_stat[5] == 0:
-            msg.direction = "forward"
-
-        else:
-            msg.direction = "backward"
-
-        if permeability_stat[6] == 1:
-            msg.navi_stat = "navigating or searching"
-        
-        else:
-            msg.navi_stat = "follow-up traction"
-
-        return msg
-        
+    if permeability_stat[4] == 1:
+        msg.mag_init_stat = "initialized"
+    else:
+        msg.mag_init_stat = "not initialized"
+    
+    if permeability_stat[5] == 0:
+        msg.direction = "forward"
 
     else:
-        self.get_logger().info(f"checksum error: {resp}")
+        msg.direction = "backward"
+
+    if permeability_stat[6] == 1:
+        msg.navi_stat = "navigating or searching"
+    
+    else:
+        msg.navi_stat = "follow-up traction"
+
+    return msg
+
 
 def set_nav_mode(cmd, mode):
     return frame_protocol(cmd[0], cmd[1], [nav_mode_code[0], mode])
