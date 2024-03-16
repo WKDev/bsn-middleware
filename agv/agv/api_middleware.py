@@ -264,7 +264,9 @@ endpoint_port = 8899
 class APIMiddleware(Node):
     def __init__(self):
         super().__init__('api_middleware')
-        self.get_logger().info(f'{self.get_namespace()} API Middleware started')
+        self.ip = '192.168.11.6'
+        self.ns = self.get_namespace()
+        self.get_logger().info(f'{self.ns} API Middleware started')
 
         self.basic_pub = self.create_publisher(AGVBasicStat, 'basic_stat', 100)
         self.batt_pub = self.create_publisher(AGVBattStat, 'batt_stat', 100)
@@ -275,7 +277,7 @@ class APIMiddleware(Node):
         # self.alive_timer = self.create_timer(1, self.alive_callback)
 
 
-        self.alive = Alive(device_id = 'test_agv_id',device_type = 'agv',is_alive = True, ip = '192.168.11.6')
+        self.alive = Alive(device_id = 'agv_1',device_type = 'agv',is_alive = True, ip = self.ip)
 
         self.basic_stat = AGVBasicStat()
         self.batt_stat = AGVBattStat()
@@ -302,7 +304,7 @@ class APIMiddleware(Node):
 
 
     def alive_callback(self):
-        self.alive_pub.publish(Alive(device_id = 'test_agv_id',device_type = 'agv',is_alive = True, ip = '192.168.11.6'))
+        self.alive_pub.publish(Alive(device_id = 'agv_1',device_type = 'agv',is_alive = True, ip = '192.168.11.6'))
         self.get_logger().info('Publishing alive message')
 
     def cmd_vel_callback(self, msg):
@@ -422,7 +424,7 @@ class APIMiddleware(Node):
                                 #     # self.get_logger().info(f"received resp for req : {self.alive_queue[0]}")
                                 #     self.queue.popleft()
                                 #     self.alive_queue.popleft()
-                                #     self.alive_pub.publish(Alive(device_id = 'test_agv_id',device_type = 'agv',is_alive = True, ip = '192.168.11.6'))
+                                self.alive_pub.publish(Alive(device_id = self.ns,device_type = 'agv',is_alive = True, ip = '192.168.11.6'))
                                 
                                 if response[5] == basic_stat_code[1]:
                                     parsed = parse_basic_stat(message, response)

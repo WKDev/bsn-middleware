@@ -38,15 +38,14 @@ class Integration(Node):
 
         self.base_uri = "ws://localhost:8765"
         self.cmd_queue = deque()
+        self.agv_stat_msg = {"basic_stat": None, "batt_stat": None, "nav_stat": None, "lift_stat": None, "alive": None}
+
         # threading.Thread(target=self.ws_pub_thread,daemon=True).start()
         threading.Thread(target=lambda : asyncio.run(self.ws_sender()),daemon=True).start()
         threading.Thread(target=lambda : asyncio.run(self.cmd_receiver()),daemon=True).start()
-        threading.Thread(target=self.cmd_pub_thread,daemon=True).start()
-
+        # threading.Thread(target=self.cmd_pub_thread,daemon=True).start(
 
         
-        
-        self.agv_stat_msg = {"basic_stat": None, "batt_stat": None, "nav_stat": None, "lift_stat": None, "alive": None}
 
     def cmd_pub_thread(self):
         while True:
@@ -84,6 +83,7 @@ class Integration(Node):
 
     async def cmd_receiver(self):
         uri = f"{self.base_uri}{self.ns}/cmd"
+        self.get_logger().info(f'receiver start at : {uri}')
 
         while True:
             try:
@@ -135,10 +135,10 @@ class Integration(Node):
 
 
     async def ws_sender(self):
+        uri = f"{self.base_uri}{self.ns}/stat"
+        self.get_logger().info(f'sender start at :{uri}')
         while True:
             
-            uri = f"{self.base_uri}{self.ns}/stat"
-
             if self.message_queue:
                 message = self.message_queue.popleft()
                 self.agv_stat_msg[message[0]] = message[1]
@@ -157,7 +157,9 @@ class Integration(Node):
                 
                 
             else:
-                # self.get_logger().info('msg_queue is empty, waiting for new message...')
+                self.get_logger().info('msg_queue is empty, waiting for new message...')
+                self.get_logger().info(json.dumps(self.agv_stat_msg))
+
                 await asyncio.sleep(0.1)
 
 
@@ -176,9 +178,6 @@ class Integration(Node):
             'uptime' : time.strftime('%H:%M:%S', time.gmtime(msg.uptime/1000)),
             'odometer' : f"{msg.odometer/1000} m",
 
-
-            
-
         }
 
         json_string = json.dumps(data)
@@ -193,7 +192,6 @@ class Integration(Node):
             'temp'   : f"{msg.temp} °C"
             }
         json_string = json.dumps(data)
-
         self.message_queue.append(('batt_stat', json_string))
 
     def nav_stat_callback(self, msg):
