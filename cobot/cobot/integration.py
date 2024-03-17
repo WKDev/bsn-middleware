@@ -21,7 +21,7 @@ class Integration(Node):
         self.message_queue = deque(maxlen=100)  
         self.endpoint_ip= self.declare_parameter('endpoint_ip', '192.168.10.2').get_parameter_value().string_value
 
-        self.get_logger().info(f"Initializing integration on {self.endpoint_ip}, ns : {self.get_namespace()}")
+        self.get_logger().info(f"running integration for cobot: {self.endpoint_ip}, ns : {self.get_namespace()}")
 
         self.create_subscription(CobotStat, f'stat', self.stat_callback, 10)
         self.create_subscription(Alive, f'alive', self.alive_callback, 10)
