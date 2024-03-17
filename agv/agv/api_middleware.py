@@ -55,6 +55,34 @@ navtask_cmd_code = [0x06, 0xff]
 turn_cmd_code = [0x22,0xff]
 remote_task_code = [0x31,0xff]
 
+def ping_with_timeout(host, timeout=1):
+    """
+    Pings a host and returns False if there is no response within the specified timeout.
+    :param host: The hostname or IP to ping.
+    :param timeout: Timeout in seconds.
+    :return: True if the host responds within the timeout, otherwise False.
+    """
+    # Construct the ping command based on the operating system
+    command = ['ping', '-c', '1', host]
+    if platform.system().lower() == "windows":
+        command = ['ping', '-n', '1', host]
+    
+    # Start the ping process
+    start_time = time.time()
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        # Wait for the ping process to complete or timeout
+        process.communicate(timeout=timeout)
+        return process.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+    finally:
+        # Ensure the process is terminated
+        process.kill()
+        # Check if the response was within the timeout
+        return (time.time() - start_time) <= timeout
+    
+
 
 
 
@@ -264,7 +292,7 @@ endpoint_port = 8899
 class APIMiddleware(Node):
     def __init__(self):
         super().__init__('api_middleware')
-        self.ip = '192.168.11.6'
+        self.endpoint_ip= self.declare_parameter('endpoint_ip', '192.168.10.2').get_parameter_value().string_value
         self.ns = self.get_namespace()
         self.get_logger().info(f'{self.ns} API Middleware started')
 
@@ -277,7 +305,7 @@ class APIMiddleware(Node):
         # self.alive_timer = self.create_timer(1, self.alive_callback)
 
 
-        self.alive = Alive(device_id = 'agv_1',device_type = 'agv',is_alive = True, ip = self.ip)
+        self.alive = Alive(device_id = 'agv_1',device_type = 'agv',is_alive = True, ip = self.endpoint_ip)
 
         self.basic_stat = AGVBasicStat()
         self.batt_stat = AGVBattStat()
@@ -301,6 +329,12 @@ class APIMiddleware(Node):
         self.queue = deque([])
         self.alive_queue = deque([])
         threading.Thread(target=self.connect_and_send, daemon=True).start()
+
+        self.create_timer(0.1, self.health_check_callback)
+
+    def health_check_callback(self):
+        self.alive_pub.publish(Alive(device_id=self.get_namespace(), device_type="agv",ip=self.endpoint_ip, is_alive=ping_with_timeout(self.endpoint_ip)))
+        # pass
 
 
     def alive_callback(self):

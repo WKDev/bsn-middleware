@@ -28,7 +28,6 @@ setup(
             "env_manager = rack.env_manager:main",
             'teleop_rack = rack.teleop_rack:main',
             'alive = rack.alive:main',
-            
         ],
     },
 )

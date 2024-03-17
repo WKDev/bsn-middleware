@@ -8,8 +8,8 @@ import subprocess
 import time
 import json
 import socket
+from collections import deque
 
-ENDPOINT_IP = "192.168.10.2"
 
 def ping_with_timeout(host, timeout=1):
     """
@@ -42,13 +42,18 @@ def ping_with_timeout(host, timeout=1):
 class CobotDriver(Node):
     def __init__(self):
         super().__init__('cobot_driver')
+        
+        self.endpoint_ip= self.declare_parameter('endpoint_ip', '192.168.10.2').get_parameter_value().string_value
 
-        self.get_logger().info(f"Initializing Cobot Driver on {ENDPOINT_IP}, ns : {self.get_namespace()}")
+
+        self.get_logger().info(f"Initializing Cobot Driver on {self.endpoint_ip}, ns : {self.get_namespace()}")
         self.stat_pub = self.create_publisher(CobotStat, 'stat', 10)
         self.alive_pub = self.create_publisher(Alive, 'alive', 10)
         self.subscription = self.create_subscription(String, 'cmd_run', self.cmd_run_callback, 10)
         self.create_timer(0.1, self.health_check_callback)
         self.create_timer(0.1, self.fetch_stat)
+        self.q = deque()
+
 
         self.stat_msg = lambda query_data : {
         "dsID":"www.hc-system.com.RemoteMonitor",
@@ -56,47 +61,76 @@ class CobotDriver(Node):
         "packID": "0",
         "queryAddr":query_data
         }
+        self.cmd_msg = lambda cmd_data : {
+        "dsID":"www.hc-system.com.RemoteMonitor",
+        "reqType": "command",
+        "packID": "1",
+        # "queryAddr":["version", "curMode"]
+        "cmdData": cmd_data
+        }
+        
 
         self.stat = {}
         self.cmd_list = ["curMode","curAlarm", "isMoving", "moldList" ] + [f"axis-{x}" for x in range(7)] + [f"world-{x}" for x in range(7)]
 
     def health_check_callback(self):
-        # self.alive_pub.publish(Alive(device_id=self.get_namespace(), device_type="cobot",ip=ENDPOINT_IP, is_alive=ping_with_timeout(ENDPOINT_IP)))
-        pass
+        self.alive_pub.publish(Alive(device_id=self.get_namespace(), device_type="cobot",ip=self.endpoint_ip, is_alive=ping_with_timeout(self.endpoint_ip)))
+        # pass
 
     def fetch_stat(self):
         # 소켓 생성
+        
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            # 서버에 연결
-            s.connect((ENDPOINT_IP, 9760))
-            
-            msg = json.dumps(self.stat_msg(self.cmd_list)).encode('ascii')
-            # 메시지 전송
-            s.sendall(msg)
-            
-            self.get_logger().info(f"sending{msg}")
-            
-            resp_buf = s.recv(1024).decode("ascii")
-            resp = json.loads(resp_buf)
+            s.settimeout(1.0)
 
-            for k, v in zip(resp['queryAddr'], resp['queryData']):
-                if k == "curMode":
-                    mode_list = ["none", "Manual Mode", "Automatic Mode", "Stop Mode", "Auto-running", "Step-by-Step", "Single Loop"]
-                    self.stat[k] = mode_list[int(v)]
+            try:
+                s.connect((self.endpoint_ip, 9760))
 
-                elif k == "isMoving":
-                    self.stat[k] = "Moving" if v == "1" else "Stopped"
-                
+                if not self.q:
+                    self.q.append(self.stat_msg(self.cmd_list))
+
+                if self.q:
+                    cmd = self.q.popleft()
+
+                    if int(cmd['packID']) == 1:
+                        self.get_logger().info(f"cmd : {cmd}")
+                    
+                    msg = json.dumps(cmd).encode('ascii')
+                    s.sendall(msg)
+                    
+                    # self.get_logger().info(f"sending{msg}")
+                    
+                    resp_buf = s.recv(1024).decode("ascii")
+                    resp = json.loads(resp_buf)
+
+                    if int(resp['packID']) == 0: # check if stat
+                        for k, v in zip(resp['queryAddr'], resp['queryData']):
+                            if k == "curMode":
+                                mode_list = ["none", "Manual Mode", "Automatic Mode", "Stop Mode","","","","Auto-running","Step-by-Step", "Single Loop"]
+                                self.stat[k] = mode_list[int(v)]
+
+                            elif k == "isMoving":
+                                self.stat[k] = "Moving" if v == "1" else "Stopped"
+                            
+                            else:
+                                self.stat[k] = round(float(v),3)
+                        self.stat_pub.publish(CobotStat(current_mode=self.stat["curMode"], current_alarm=int(self.stat["curAlarm"]), is_moving=self.stat["isMoving"], joint_j1=self.stat["axis-0"], joint_j2=self.stat["axis-1"], joint_j3=self.stat["axis-2"], joint_j4=self.stat["axis-3"], joint_j5=self.stat["axis-4"], joint_j6=self.stat["axis-5"], world_x= self.stat['world-0'], world_y=self.stat['world-1'], world_z=self.stat['world-2'], world_u=self.stat['world-3'], world_v=self.stat['world-4'], world_w=self.stat['world-5']))
+
+                    elif int(resp['packID']) == 1: # check if cmd
+                        self.get_logger().info(f"cmd_resp : {resp_buf}")
                 else:
-                    self.stat[k] = round(float(v),3)
+                    self.get_logger().info("No command to send")
 
-            self.stat_pub.publish(CobotStat(current_mode=self.stat["curMode"], current_alarm=int(self.stat["curAlarm"]), is_moving=self.stat["isMoving"], joint_j1=self.stat["axis-0"], joint_j2=self.stat["axis-1"], joint_j3=self.stat["axis-2"], joint_j4=self.stat["axis-3"], joint_j5=self.stat["axis-4"], joint_j6=self.stat["axis-5"], world_x= self.stat['world-0'], world_y=self.stat['world-1'], world_z=self.stat['world-2'], world_u=self.stat['world-3'], world_v=self.stat['world-4'], world_w=self.stat['world-5']))
-
+                    
+            except socket.timeout:
+                self.get_logger().error("Socket connection timed out. No response received within 1 second.")
+            except Exception as e:
+                self.get_logger().error(f"An error occurred: {e}")
 
     def cmd_run_callback(self, msg):
         self.get_logger().info(f'Received command: {msg.data}')
-
-    
+        self.q.appendleft(self.cmd_msg([msg.data]))
+            
 
 def main(args=None):
     rclpy.init(args=args)
