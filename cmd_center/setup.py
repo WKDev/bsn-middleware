@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'work_manager = cmd_center.work_manager:main',
+            'integration = cmd_center.integration:main',
         ],
     },
 )

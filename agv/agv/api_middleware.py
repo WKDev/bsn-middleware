@@ -22,6 +22,7 @@ import time
 import threading
 from collections import deque
 from random import randint
+import platform, subprocess
 
 basic_stat_code = [0x01,0x61]
 batt_stat_code = [0x02, 0x62]

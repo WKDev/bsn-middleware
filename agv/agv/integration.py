@@ -9,7 +9,7 @@ import json
 import threading
 import time
 import traceback
-
+import platform
 
 class Integration(Node):
     def __init__(self):
@@ -43,32 +43,7 @@ class Integration(Node):
         # threading.Thread(target=self.ws_pub_thread,daemon=True).start()
         threading.Thread(target=lambda : asyncio.run(self.ws_sender()),daemon=True).start()
         threading.Thread(target=lambda : asyncio.run(self.cmd_receiver()),daemon=True).start()
-        # threading.Thread(target=self.cmd_pub_thread,daemon=True).start(
-
-        
-
-    def cmd_pub_thread(self):
-        while True:
-            # if self.cmd_queue:
-            #     cmd = self.cmd_queue.popleft()
-            #     if cmd['cmd'] == 'run_state':
-            #         self.lg.info(f'run_state ok : {int(cmd["data"])}')
-            #         self.btn_pub.publish(Int32(data = int(cmd["data"])))
-            #         # self.lg.info()
-            #     elif cmd['cmd'] == 'nav_mode':
-            #         self.lg.info(f'nav_mode ok : {int(cmd["data"])}')
-            #         self.mode_pub.publish(Int32(data = int(cmd["data"])))
-            #     elif cmd['cmd'] =='lift':
-            #         self.lg.info('lift')
-            #     else:
-            #         self.lg.warning("other instruction")
-
-            time.sleep(0.01)
-
-        
-    def ws_pub_thread(self):
-        asyncio.run(self.ws_sender())
-
+    
     async def connect_and_send(self,uri, message):
         while True:
             try:
@@ -157,8 +132,7 @@ class Integration(Node):
                 
                 
             else:
-                self.get_logger().info('msg_queue is empty, waiting for new message...')
-                self.get_logger().info(json.dumps(self.agv_stat_msg))
+                # self.get_logger().info('msg_queue is empty, waiting for new message...')
 
                 await asyncio.sleep(0.1)
 
