@@ -2,7 +2,7 @@ import asyncio
 import websockets
 from collections import defaultdict
 from websockets.exceptions import ConnectionClosedError
-
+import traceback
 connected_clients = defaultdict(set)
 
 async def broadcast_message(path, message):
@@ -14,13 +14,17 @@ async def handler(websocket, path):
     auth_token = websocket.request_headers.get('Sec-WebSocket-Protocol')
     auth_token = auth_token.split(', ') if auth_token else None
     expected_token = 'test_token'  # 조건에 맞는 토큰을 여기에 설정
+
     print(f"{auth_token=} {expected_token=}")
 
     if websocket.remote_address[0] == '127.0.0.1':
         # print(f"authentification postponed for internal access : {websocket.remote_address}")
         pass
     else:
-
+        try: 
+            auth_token = auth_token[0]
+        except:
+            pass
         if not auth_token or expected_token not in auth_token:
             print(f"Rejected connection from {websocket.remote_address}: Unauthorized")
             await websocket.close(code=1008, reason="Unauthorized")  # 1008: Policy Violation
@@ -32,14 +36,11 @@ async def handler(websocket, path):
     try:
         async for message in websocket:
             print(f"Recv |||  {websocket.remote_address} on {path}: {message}")
-            if path == '/agv_1/stat':
-
-                await broadcast_message(path, f"{message}")
-
-            if path == '/agv_1/cmd':
-                await broadcast_message(path, f"{message}")
+            await broadcast_message(path, f"{message}")
     except ConnectionClosedError:
+        
         print(f"Connection closed by {websocket.remote_address} on {path}")
+        print(f"{traceback.format_exc()}")
     finally:
         connected_clients[path].remove(websocket)
         if not connected_clients[path]:
