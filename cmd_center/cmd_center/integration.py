@@ -3,6 +3,9 @@ from std_msgs.msg import String
 from rclpy.node import Node
 import time
 import threading, websockets, os, time, asyncio, json
+from collections import deque
+from device_msgs.msg import AGVWorkCmd
+from std_msgs.msg import String
 
 class Integration(Node):
     def __init__(self):
@@ -10,13 +13,22 @@ class Integration(Node):
         self.ns = self.get_namespace()
         self.ws_ip= self.declare_parameter('ws_ip', '192.168.11.12').get_parameter_value().string_value
         self.ws_port= self.declare_parameter('ws_port', '8765').get_parameter_value().string_value
+        
 
         self.lg = lambda x : self.get_logger().info(x)
 
         self.lg(f"{self.get_name()} started, ns: {self.ns}")
 
+        self.log_pub = self.create_publisher(String, f'/work_log', 10)
+        self.log_queue = deque(maxlen=100)
+        self.create_subscription(String, f'/work_log', self.log_callback, 10)
+
         threading.Thread(target=lambda : asyncio.run(self.ws_sender()),daemon=True).start()
         threading.Thread(target=lambda : asyncio.run(self.cmd_receiver()),daemon=True).start()
+
+    def log_callback(self, msg):
+        self.lg(f"received log: {msg.data}")
+        self.log_queue.append(msg.data)
 
 
     async def connect_and_send(self,uri, message):
@@ -40,12 +52,20 @@ class Integration(Node):
             try:
                 async with websockets.connect(uri, subprotocols=["test_token"]) as websocket:
                     message = await websocket.recv()
+                    msg = json.loads(message)
+                    self.lg(f"received message: {msg}")
 
-                    # cmd = json.loads(message)
-                    # return response
-                    self.lg((f"Received: {message}"))
-                    
-                    # self.cmd_pub.publish(String(data=cmd['cmd']))
+
+                    if msg['cmd'] == 'start':
+                        msg['startPoint'] = 0 if msg['startPoint'] == 'nursing' else 1
+                        
+                        msg['targetRacks'] = list(map(int, msg['targetRacks']))
+                        work_msg = AGVWorkCmd(cmd=msg['cmd'], date=msg['date'], startpoint=msg['startPoint'], endpoint=-1, target_racks=msg['targetRacks'], transfer_after_work=bool(msg['transferAfterWork']), transfer_date=msg['transferDate'], agv=msg['agv'], cobot=msg['cobot'])
+                    else:
+                        work_msg = AGVWorkCmd(cmd=msg['cmd'],date=msg['date'], agv=msg['agv'], cobot=msg['cobot'])
+                    self.cmd_pub = self.create_publisher(AGVWorkCmd, f'/{msg["agv"]}/cmd_work', 10)
+                    self.cmd_pub.publish(work_msg)
+                    self.destroy_publisher(self.cmd_pub)
                     
 
             except Exception as e:
@@ -54,33 +74,24 @@ class Integration(Node):
                 continue
 
     async def ws_sender(self):
-            uri = f"ws://{self.ws_ip}:{self.ws_port}/task/stat"
+            uri = f"ws://{self.ws_ip}:{self.ws_port}/task/log"
             self.get_logger().info(f'sender start at :{uri}')
             while True:
                 
-                # if self.message_queue:
-                #     message = self.message_queue.popleft()
-                #     self.stat_msg[message[0]] = message[1]
+                if self.log_queue:
+                    message = self.log_queue.popleft()
 
-                #     # if there's no None value in every key of stat_msg, then send the message
-                #     if all(self.stat_msg.values()):
-                #         buf = json.dumps(self.stat_msg)
-                #         # self.get_logger().info('Sending message: "%s"' % buf)
+                    buf = json.dumps(message)
+                    self.get_logger().info('Sending message: "%s"' % buf)
 
-                #         response = await self.connect_and_send(uri, buf)
+                    response = await self.connect_and_send(uri, buf)
 
-                #         # reset the stat_msg
-                #         self.stat_msg = {"alive": None,"stat": None }
                     
-                #     await asyncio.sleep(0.01)
+                    await asyncio.sleep(0.1)
                     
-                    
-                # else:
-                    # self.get_logger().info('msg_queue is empty, waiting for new message...')
-                    # self.get_logger().info(json.dumps(self.stat_msg))
-
-                await asyncio.sleep(0.1)
-                pass
+                else:
+                    await asyncio.sleep(0.1)
+    
 
         
     

@@ -143,7 +143,7 @@ class Integration(Node):
             'operating_status': msg.operating_status,
             'current_mode' : msg.current_mode,
             'lin_vel': f"{msg.twist.linear.x} mm/s",
-            'ang_vel': f"{msg.twist.angular.z} mm/s",
+            'ang_vel': f"{msg.twist.angular.z} rad/s",
             'start_btn' : bool(msg.start_btn),
             'stop_btn' : bool(msg.stop_btn),
             'e-stop' : bool(msg.e_stop_btn),

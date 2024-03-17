@@ -1,14 +1,14 @@
+import datetime
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int32, Int32MultiArray
 from device_msgs.msg import AGVBasicStat, AGVBattStat, AGVNavStat, AGVNavInit, AGVWorkCmd, Alive, AGVIo, AGVChargingCmd
 import time
-
-from rclpy.executors import MultiThreadedExecutor
 from threading import Thread
 from random import randint
 
 from collections import deque
+import json
 
 
 class WorkManager(Node):
@@ -26,7 +26,12 @@ class WorkManager(Node):
         self.cmd_navinit_pub = self.create_publisher(AGVNavInit, 'cmd_navinit', 10)
         self.cmd_task_pub = self.create_publisher(Int32, 'cmd_task', 10)
         self.mode_pub = self.create_publisher(Int32, 'cmd_mode', 10)
-
+        
+        self.log_pub = self.create_publisher(String, '/work_log', 10)
+        self.create_subscription(String, '/work_log', self.log_callback, 10)
+        self.work_logs =[]
+        self.current_work = None
+        self.lg = lambda x : self.get_logger().info(x)
 
         self.alive_msg = Alive()
 
@@ -42,6 +47,8 @@ class WorkManager(Node):
         self.cmd_navinit = AGVNavInit()
         self.cmd_task = Int32()
 
+        self.stop_work_once = True
+
         self.rack_points= [1,2,3,4,5,6,21,22,23,24,25,26]
         self.auto_retraction_points = [7,8,9,10,11,12]
 
@@ -55,11 +62,17 @@ class WorkManager(Node):
         self.work_queue = deque([])
         self.charging_queue = deque([])
 
+    def log_callback(self, msg):
+        self.work_logs.append(msg.data)
 
-        
 
     def lift_up(self, wait = False):
-        while True:  
+        if self.check_work_stopped():
+            return
+        while True:
+            if self.check_work_stopped():
+                break
+            
             if self.lift_stat['ready']:
                 self.get_logger().info(f"lift_stat is ready, {self.lift_stat}")
                 break
@@ -70,13 +83,16 @@ class WorkManager(Node):
             t1 = time.time()
             init_lift_io = self.lift_stat['io']
 
-            if not self.lift_stat['up']:
+            if not self.lift_stat['up'] and not self.check_work_stopped():
                 self.get_logger().info("lifting up...")
                 # self.cmd_task_pub.publish(Int32(data = 255))
                 # time.sleep(0.5)
                 self.cmd_task_pub.publish(Int32(data = 1))
                 if wait:
                     while not self.lift_stat['up']:
+                        if self.check_work_stopped():
+                            break
+
                         self.get_logger().info(f"waiting for lift up...{ self.lift_stat['io']}")
                         time.sleep(1)
 
@@ -97,16 +113,36 @@ class WorkManager(Node):
             
         else:
             self.get_logger().info("lift status is not ready, lifting up failed.")
-            return False        
+            return False
+
+    def leave_log(self, log_data): 
+        log_msg = {
+            'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'agv': 'agv1',
+            'cobot': 'cobot1',
+            'sender': 'work_manager',
+            'msg' : str(log_data)
+        }
+        self.work_logs.append(log_msg)
+
+        self.log_pub.publish(String(data = json.dumps(self.work_logs)))
+
 
 
     def lift_down(self, wait = False):
-        while True:  
+        if self.check_work_stopped():
+            return
+        
+        while True:
+            if self.check_work_stopped():
+                break
             if self.lift_stat['ready']:
                 self.get_logger().info(f"lift_stat is ready, {self.lift_stat}")
                 break
 
-        if self.lift_stat['ready']:
+        self.leave_log('lift down start')
+        if self.lift_stat['ready'] and not self.check_work_stopped():
+           
             t1 = time.time()
             init_lift_io = self.lift_stat['io']
             if not self.lift_stat['down']:
@@ -116,6 +152,9 @@ class WorkManager(Node):
                 self.cmd_task_pub.publish(Int32(data = 2))
                 if wait:
                     while not self.lift_stat['down']:
+                        if self.check_work_stopped():
+                            break
+
                         self.get_logger().info(f"waiting for lift down...{ self.lift_stat['io']}")
                         time.sleep(1)
 
@@ -136,16 +175,21 @@ class WorkManager(Node):
 
 
     def navtarget(self, target_pos, wait = True, auto_retraction = False, autostart= True, stop_after_done = False):
+        if self.check_work_stopped():
+            return
         retraction_once = True
         while True:
+            if self.check_work_stopped():
+                break
             if self.nav_stat.current != -99:
                 self.get_logger().info(f"nav_stat is ready, current position: {self.nav_stat.current} target position: {target_pos}")
                 break
             elif self.nav_stat.current ==target_pos:
                 self.get_logger().info('already in place')
+                self.leave_log('already in place')
                 return True
 
-
+        self.leave_log(f"agv moves to {target_pos}")
         self.cmd_navtask_pub.publish(Int32(data = target_pos))
 
         if autostart:
@@ -153,6 +197,9 @@ class WorkManager(Node):
 
         if wait:
             while self.nav_stat.current != target_pos:
+                if self.check_work_stopped():
+                    break
+
                 self.get_logger().info(f"moving agv, target : {self.nav_stat.target} passed : {self.nav_stat.prev} current : {self.nav_stat.current} next : {self.nav_stat.next}")
                 if retraction_once and auto_retraction and self.nav_stat.current in self.auto_retraction_points and target_pos in self.rack_points:
                     self.get_logger().info("auto retraction")
@@ -230,7 +277,7 @@ class WorkManager(Node):
 
     def cmd_work_callback(self, msg):
         self.get_logger().info(f"received work command: {msg}")
-        self.work_queue.append(msg)
+        self.current_work = msg
 
 
     def start_charging(self, auto_retract = False):
@@ -266,6 +313,8 @@ class WorkManager(Node):
 
         while True:
             self.get_logger().info('waiting for charging stop')
+            if self.check_work_stopped():
+                break
 
             if list(self.io_stat.output)[9] == 0:
                 self.get_logger().info("charging stop confirmed")
@@ -281,7 +330,28 @@ class WorkManager(Node):
 
             time.sleep(0.5)
 
-
+    def check_work_stopped(self):
+        if self.current_work is not None:
+            if self.current_work.cmd == 'start':
+                return False
+            elif self.current_work.cmd == 'stop':
+                data = {
+                    'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'agv': self.current_work.agv,
+                    'cobot': self.current_work.cobot,
+                    'sender': 'work_manager',
+                    'msg' : 'work stopped by user'
+                }
+                self.log_pub.publish(String(data = json.dumps(data)))
+                if self.stop_work_once:
+                    self.get_logger().info("work stopped by user")
+                    self.control_btn('stop')
+                    self.stop_work_once = False
+                
+                return True
+        else:
+            return False
+        
     def worker(self):
         while self.nav_stat.current == -99:
             self.get_logger().info('waiting for init...')
@@ -295,8 +365,8 @@ class WorkManager(Node):
 
         while True:
 
-            if len(self.work_queue)>0 and not self.charging_state :
-                current_work = self.work_queue.pop()
+            if self.current_work is not None and not self.charging_state :
+                current_work = self.current_work
                 self.work_state = True
                 racks = [x+1 for x, value in enumerate(current_work.target_racks) if value == 1]
                 point_list = ['nursing point', 'darkroom']
@@ -319,6 +389,8 @@ class WorkManager(Node):
                 for r in racks: 
                     self.get_logger().info(f"current target rack for work:{r}")
                     time.sleep(1)
+                    if self.check_work_stopped():
+                        break
 
                     if current_work.startpoint:
                         self.lift_down(wait=True)
@@ -343,7 +415,10 @@ class WorkManager(Node):
                         time.sleep(0.2)
                         self.lift_down(wait=True)
 
+                self.current_work = None
+                self.stop_work_once = True
                 self.work_state = False
+                self.lg('all work donw')
 
             else:
                 if not self.charging_state:

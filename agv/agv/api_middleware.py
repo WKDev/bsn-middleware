@@ -548,6 +548,7 @@ class APIMiddleware(Node):
 
                         except:
                             self.get_logger().info(f"error : {traceback.format_exc()}")
+                            break
 
                     else:
                         # TODO sends default data request.
