@@ -26,7 +26,7 @@ class EnvController(Node):
         self.scheduled_timer = self.create_timer(30, self.scheduled_timer_callback)  # 1분마다 timer_callback을 호출
 
         self.create_timer(1, self.stat_timer)
-        self.stat = {'alive':{'device_id':self.get_namespace(), 'device_type':'smart-rack','is_alive' : 'true', 'ip':self.get_local_ip()}}
+        self.stat = {'device_id':self.get_namespace(), 'device_type':'smart-rack','is_alive' : 'true', 'ip':self.get_local_ip()}
 
 
         print(self.env_mode)

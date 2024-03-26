@@ -11,22 +11,22 @@ class SimplePublisher(Node):
 
         timer_period = 1  # seconds
         self.create_timer(timer_period, self.timer_callback)
-        self.env= {'top':{'temp':-99,'humid':-99, 'co2':-99},'mid':{'temp':-99,'humid':-99, 'co2':-99},'bot':{'temp':-99,'humid':-99, 'co2':-99}}
+        self.env= {'sensor':{'top':{'temp':-99,'humid':-99, 'co2':-99},'mid':{'temp':-99,'humid':-99, 'co2':-99},'bot':{'temp':-99,'humid':-99, 'co2':-99}}}
 
 
     def timer_callback(self):
 
-        self.env['top']['temp'] = randint(0,255)
-        self.env['mid']['temp'] = randint(0,255)
-        self.env['bot']['temp'] = randint(0,255)
+        self.env['sensor']['top']['temp'] = randint(0,255)
+        self.env['sensor']['mid']['temp'] = randint(0,255)
+        self.env['sensor']['bot']['temp'] = randint(0,255)
 
-        self.env['top']['humid'] = randint(0,255)
-        self.env['mid']['humid'] = randint(0,255)
-        self.env['bot']['humid'] = randint(0,255)
+        self.env['sensor']['top']['humid'] = randint(0,255)
+        self.env['sensor']['mid']['humid'] = randint(0,255)
+        self.env['sensor']['bot']['humid'] = randint(0,255)
 
-        self.env['top']['co2'] = randint(0,255)
-        self.env['mid']['co2'] = randint(0,255)
-        self.env['bot']['co2'] = randint(0,255)
+        self.env['sensor']['top']['co2'] = randint(0,255)
+        self.env['sensor']['mid']['co2'] = randint(0,255)
+        self.env['sensor']['bot']['co2'] = randint(0,255)
         
         
 

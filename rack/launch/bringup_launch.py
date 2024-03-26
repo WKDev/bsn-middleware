@@ -25,10 +25,10 @@ def generate_launch_description():
             executable='env_manager',
             name=f'env_manager'
         ),
-        Node(
-            package='rack',
-            namespace=namespace,
-            executable='alive',
-            name=f'alive'
-        ),
+        # Node(
+        #     package='rack',
+        #     namespace=namespace,
+        #     executable='alive',
+        #     name=f'alive'
+        # ),
     ])
