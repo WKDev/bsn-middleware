@@ -7,7 +7,6 @@ from collections import deque
 from device_msgs.msg import AGVWorkCmd
 from std_msgs.msg import String
 import traceback
-import json
 class Integration(Node):
     def __init__(self):
         super().__init__('integration')
@@ -22,25 +21,15 @@ class Integration(Node):
 
         self.log_pub = self.create_publisher(String, f'/work_log', 10)
         self.log_queue = None
-
-        self.rack_stat = []
         self.create_subscription(String, f'/work_log', self.log_callback, 10)
-
-        self.create_subscription(String, f'/rack_stat', self.rack_callback, 10)
-
 
         threading.Thread(target=lambda : asyncio.run(self.ws_sender()),daemon=True).start()
         threading.Thread(target=lambda : asyncio.run(self.cmd_receiver()),daemon=True).start()
-        
         # self.create_timer(0.1,  self.ws_sender)
 
     def log_callback(self, msg):
         # self.lg(f"received log: {json.loads(msg.data)[::-1]}")
-        self.log_queue= json.loads(msg.data)
-
-
-    def rack_callback(self,msg):
-        self.rack
+        self.log_queue= msg.data
 
 
     async def connect_and_send(self,uri, message):

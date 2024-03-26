@@ -1,8 +1,9 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import Int32MultiArray, String
 import RPi.GPIO as GPIO
-
+from random import randint
+import json
 class GPIODriver(Node):
     def __init__(self):
         super().__init__('gpio_driver')

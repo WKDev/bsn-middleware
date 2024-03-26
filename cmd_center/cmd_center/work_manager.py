@@ -2,7 +2,7 @@ import datetime
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int32, Int32MultiArray
-from device_msgs.msg import AGVBasicStat, AGVBattStat, AGVNavStat, AGVNavInit, AGVWorkCmd, Alive, AGVIo, AGVChargingCmd
+from device_msgs.msg import AGVBasicStat, AGVBattStat, AGVNavStat, AGVNavInit, AGVWorkCmd, Alive, AGVIo, AGVChargingCmd, CobotStat
 import time
 from threading import Thread
 from random import randint
@@ -48,11 +48,13 @@ class WorkManager(Node):
         self.cmd_task = Int32()
 
         self.stop_work_once = True
+        self.ns = self.get_namespace().replace('/','')
+        self.ns = 'root' if self.ns == '' else self.ns
+        self.create_timer(0.1, self.emit_log)
+        
 
         self.rack_points= [1,2,3,4,5,6,21,22,23,24,25,26]
         self.auto_retraction_points = [7,8,9,10,11,12]
-
-        self.onesec_timer = self.create_rate(0.1,self.get_clock())
 
         Thread(target=self.worker,daemon=True).start()
         Thread(target = self.charging_worker,daemon=True).start()
@@ -61,9 +63,16 @@ class WorkManager(Node):
         self.charging_state = False
         self.work_queue = deque([])
         self.charging_queue = deque([])
+        self.cobot_stat = CobotStat()
+
+    def cobot_callback(self, msg):
+        self.cobot_stat = msg
 
     def log_callback(self, msg):
-        self.work_logs.append(msg.data)
+        pass
+        # recv = json.loads(msg.data)
+        # if len(recv)>0:
+        #     self.work_logs.append(recv)
 
 
     def lift_up(self, wait = False):
@@ -87,6 +96,7 @@ class WorkManager(Node):
                 self.get_logger().info("lifting up...")
                 # self.cmd_task_pub.publish(Int32(data = 255))
                 # time.sleep(0.5)
+                self.leave_log('리프트 상승')
                 self.cmd_task_pub.publish(Int32(data = 1))
                 if wait:
                     while not self.lift_stat['up']:
@@ -115,20 +125,26 @@ class WorkManager(Node):
             self.get_logger().info("lift status is not ready, lifting up failed.")
             return False
 
-    def leave_log(self, log_data): 
-        log_msg = {
-            'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'agv': 'agv1',
-            'cobot': 'cobot1',
-            'sender': 'work_manager',
-            'msg' : str(log_data)
-        }
-        self.work_logs.append(log_msg)
+    def leave_log(self, sender = '', msg='empty'): 
 
-        self.log_pub.publish(String(data = json.dumps(self.work_logs)))
+        _sender = self.ns if sender == '' else sender
+
+        if not msg =='clear_log':
+            log_msg = {
+                'date': datetime.datetime.now().strftime('%y/%m/%d %H:%M:%S'),
+                'agv': 'agv1',
+                'cobot': 'cobot1',
+                'sender': str(_sender),
+                'msg' : str(msg)
+            }
+            self.work_logs.append(log_msg)
+        else:
+            self.work_logs= []
 
 
-
+    def emit_log(self):
+        self.log_pub.publish(String(data = json.dumps(self.work_logs[::-1])))
+        
     def lift_down(self, wait = False):
         if self.check_work_stopped():
             return
@@ -140,7 +156,7 @@ class WorkManager(Node):
                 self.get_logger().info(f"lift_stat is ready, {self.lift_stat}")
                 break
 
-        self.leave_log('lift down start')
+        self.leave_log(msg= 'lift down start')
         if self.lift_stat['ready'] and not self.check_work_stopped():
            
             t1 = time.time()
@@ -149,6 +165,7 @@ class WorkManager(Node):
                 self.get_logger().info("lifting down...")
                 # self.cmd_task_pub.publish(Int32(data = 255))
                 # time.sleep(0.5)
+                self.leave_log(msg='리프트 하강')
                 self.cmd_task_pub.publish(Int32(data = 2))
                 if wait:
                     while not self.lift_stat['down']:
@@ -184,16 +201,21 @@ class WorkManager(Node):
             if self.nav_stat.current != -99:
                 self.get_logger().info(f"nav_stat is ready, current position: {self.nav_stat.current} target position: {target_pos}")
                 break
-            elif self.nav_stat.current ==target_pos:
+            if int(self.nav_stat.current) ==target_pos:
                 self.get_logger().info('already in place')
-                self.leave_log('already in place')
+                # self.leave_log(msg='already in place')
                 return True
+            else:
+                self.lg(f"current {self.nav_stat.current}, target : {target_pos}")
 
-        self.leave_log(f"agv moves to {target_pos}")
+        self.leave_log(msg=f"AGV {target_pos} 위치로 이동")
         self.cmd_navtask_pub.publish(Int32(data = target_pos))
 
         if autostart:
             self.control_btn('start')
+            time.sleep(2)
+        else:
+            self.control_btn('stop')
 
         if wait:
             while self.nav_stat.current != target_pos:
@@ -335,18 +357,19 @@ class WorkManager(Node):
             if self.current_work.cmd == 'start':
                 return False
             elif self.current_work.cmd == 'stop':
-                data = {
-                    'date': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'agv': self.current_work.agv,
-                    'cobot': self.current_work.cobot,
-                    'sender': 'work_manager',
-                    'msg' : 'work stopped by user'
-                }
-                self.log_pub.publish(String(data = json.dumps(data)))
+                
                 if self.stop_work_once:
                     self.get_logger().info("work stopped by user")
                     self.control_btn('stop')
+                    try:
+                        self.cmd_pub.publish(String(data='actionStop'))
+                    except Exception as e:
+                        self.get_logger().error(str(e))
+
+
                     self.stop_work_once = False
+                    self.leave_log(sender = '시스템', msg='사용자에 의해 중지됨') 
+
                 
                 return True
         else:
@@ -358,15 +381,18 @@ class WorkManager(Node):
             time.sleep(1)
         self.get_logger().info('task manager ready')
 
-        # TODO check the direction
-        # TODO for loop
-        # TODO set obstacle detection type forcibly
+        # todo check the voltage , charging state, rack state
 
+        self.control_btn('start')
 
         while True:
 
             if self.current_work is not None and not self.charging_state :
                 current_work = self.current_work
+                self.leave_log(msg="clear_log")
+                self.create_subscription(CobotStat, '/cobot_1/stat', self.cobot_callback, 10)
+                self.leave_log(sender = '시스템', msg='작업 시작됨')
+                self.lg(datetime.datetime.now().strftime('%y/%m/%d %H:%M:%S'))
                 self.work_state = True
                 racks = [x+1 for x, value in enumerate(current_work.target_racks) if value == 1]
                 point_list = ['nursing point', 'darkroom']
@@ -379,6 +405,7 @@ class WorkManager(Node):
                 # stop charging
                 if self.io_stat.output[9]:
                     self.get_logger().info("stop charging for safety reason")
+                    self.leave_log(msg='충전 종료') 
                     self.stop_charging()
 
                 if current_work.startpoint == 0:
@@ -388,37 +415,89 @@ class WorkManager(Node):
 
                 for r in racks: 
                     self.get_logger().info(f"current target rack for work:{r}")
+                    self.leave_log(msg=f'랙 {r}번 작업 시작') 
+
                     time.sleep(1)
                     if self.check_work_stopped():
                         break
 
-                    if current_work.startpoint:
-                        self.lift_down(wait=True)
-                        time.sleep(0.2)
-                        self.navtarget(20+r, wait=True, auto_retraction=True, autostart = True,stop_after_done=False)
-                        self.lift_up(wait=True)
-                        time.sleep(0.2)
-                        self.navtarget(r, wait=True, auto_retraction=False, autostart = False, stop_after_done=False)
-                        self.lift_down(wait=True)
+                    # self.lift_down(wait=True)
+                    time.sleep(0.2)
+                    self.control_btn('start')
+                    self.navtarget(30, wait=True, auto_retraction=False, autostart = True, stop_after_done=False)
+                    # self.lift_up(wait=True)
+                    time.sleep(0.2)
+                    self.navtarget(17, wait=True, auto_retraction=False, autostart = True , stop_after_done=True)
+
+                    self.leave_log(msg=f'모판 적재를 위해 대기') 
+                    time.sleep(1)
+
+                    self.control_btn('stop')
+                    time.sleep(1)
+
+                    if not self.check_work_stopped():
+                        self.leave_log(sender='cobot_1', msg = '협동로봇 적재작업 시작')
+                        self.cmd_pub = self.create_publisher(String, f'/cobot_1/cmd_run', 10)
+                        self.cmd_pub.publish(String(data='actionSingleCycle'))
+                        time.sleep(0.1)
+                        cobot_stop_cnt= 0
+                        while True:
+                            self.get_logger().info("waiting for cobot's stacking")
+                            self.get_logger().info(self.cobot_stat.is_moving)
+                            
+                            time.sleep(0.5)
+                            if self.cobot_stat.is_moving=='Stopped':
+                                self.get_logger().info("cobot 정지됨")
+                                cobot_stop_cnt = cobot_stop_cnt+1
+
+                            if cobot_stop_cnt > 3:
+                                self.leave_log(sender = 'cobot_1', msg=f'모판 적재 완료') 
+                                self.control_btn('start')
+
+                                break
+
+
+                                # break
+                            if self.check_work_stopped():
+                                break
+                            
+                        time.sleep(1)
                         
-                    else:
-                        self.lift_down(wait=True)
-                        time.sleep(0.2)
-                        self.navtarget(r, wait=True, auto_retraction=True, autostart = True,stop_after_done=False)
-                        time.sleep(0.2)
-                        self.lift_up(wait=True)
-                        # self.navtarget(17, wait=True, auto_retraction=True, autostart = True, stop_after_done=True)
-                        self.navtarget(17, wait=True, auto_retraction=True, autostart = True, stop_after_done=True)
+                    self.navtarget(30, wait=True, auto_retraction=False, autostart = True, stop_after_done=False)
+                    # self.lift_down(wait=True)
 
-                        time.sleep(0.2)
-                        self.navtarget(20+r, wait=True, auto_retraction=False, autostart = False, stop_after_done=False)
-                        time.sleep(0.2)
-                        self.lift_down(wait=True)
+                    # if current_work.startpoint:
+                        
+                        
+                    # else:
+                    #     self.lift_down(wait=True)
+                    #     time.sleep(0.2)
+                    #     self.navtarget(r, wait=True, auto_retraction=True, autostart = True,stop_after_done=False)
+                    #     time.sleep(0.2)
+                    #     self.lift_up(wait=True)
+                    #     # self.navtarget(17, wait=True, auto_retraction=True, autostart = True, stop_after_done=True)
+                    #     self.navtarget(17, wait=True, auto_retraction=True, autostart = True, stop_after_done=True)
 
+                    #     time.sleep(0.2)
+                    #     self.navtarget(+r, wait=True, auto_retraction=False, autostart = False, stop_after_done=False)
+                    #     time.sleep(0.2)
+                    #     self.lift_down(wait=True)
+                    if not self.check_work_stopped():
+                        self.leave_log(msg=f'랙 {r}번 작업 완료')
+                        
+
+                    
+
+
+                time.sleep(3)
+                self.leave_log(sender = '시스템', msg=f'모든 작업 완료') 
+
+
+                # self.leave_log(msg="clear_log")
                 self.current_work = None
                 self.stop_work_once = True
                 self.work_state = False
-                self.lg('all work donw')
+                self.lg('all work done')
 
             else:
                 if not self.charging_state:
@@ -489,7 +568,10 @@ class WorkManager(Node):
                 self.navtarget(14, wait=True, auto_retraction=True, autostart = True,stop_after_done=True)
 
                 if current_work.mode == 0:
-                    self.start_charging(auto_retract = bool(current_work.auto_close))
+                    # self.start_charging(auto_retract = bool(current_work.auto_close))
+                    self.start_charging(auto_retract = False)
+                    self.control_btn('stop')
+                    time.sleep(5)
 
                     while True:
 

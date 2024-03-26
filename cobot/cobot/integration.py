@@ -16,7 +16,7 @@ class Integration(Node):
         super().__init__('integration')
         self.ns = self.get_namespace()
 
-        self.ws_ip= self.declare_parameter('ws_ip', '192.168.11.12').get_parameter_value().string_value
+        self.ws_ip= self.declare_parameter('ws_ip', 'sid.local').get_parameter_value().string_value
         self.ws_port= self.declare_parameter('ws_port', '8765').get_parameter_value().string_value
         self.message_queue = deque(maxlen=100)  
         self.endpoint_ip= self.declare_parameter('endpoint_ip', '192.168.10.2').get_parameter_value().string_value

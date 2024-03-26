@@ -4,6 +4,7 @@ from collections import defaultdict
 from websockets.exceptions import ConnectionClosedError
 import traceback
 connected_clients = defaultdict(set)
+import json
 
 async def broadcast_message(path, message):
     if path in connected_clients and connected_clients[path]:
@@ -35,7 +36,8 @@ async def handler(websocket, path):
     connected_clients[path].add(websocket)
     try:
         async for message in websocket:
-            print(f"Recv |||  {websocket.remote_address} on {path}: {message}")
+            if path == '/task/log':
+                print(f"Recv |||  {websocket.remote_address} on {path}: {json.loads(message)}")
             await broadcast_message(path, f"{message}")
     except ConnectionClosedError:
         

@@ -1,3 +1,9 @@
+string cmd
+string date
 int32 startpoint
 int32 endpoint
 int32[] target_racks
+bool transfer_after_work
+string transfer_date
+string agv
+string cobot

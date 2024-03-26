@@ -3,7 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import Int32, Int32MultiArray
 from device_msgs.msg import LedCtl,Env
 import datetime
-
+import json
 
 NODE_NAME = 'env_manager'
 TOPIC_NAME = 'cmd_led'
@@ -21,18 +21,22 @@ class EnvController(Node):
             10)
 
         self.env_data_subscriber = self.create_subscription(
-            Env,
+            String,
             'env_data',
             self.env_data_callback,
             10)
 
 
         self.gpio_publisher = self.create_publisher(Int32MultiArray, '/gpio', 10)
+        self.stat_pub = self.create_publisher(String,'/rack_stat',10)
 
         # 시간 범위 설정 예: [[시작 분1, 종료 분1], [시작 분2, 종료 분2]]
         self.time_ranges = [[98,99], [105,106]]  # 예시 시간 범위
 
         self.scheduled_timer = self.create_timer(30, self.scheduled_timer_callback)  # 1분마다 timer_callback을 호출
+
+        self.create_timer(1, self.stat_timer)
+        self.stat = {'alive':{'device_id':self.get_namespace(), 'device_type':'smart-rack','is_alive' : 'true'}}
 
 
         print(self.env_mode)
@@ -64,10 +68,9 @@ class EnvController(Node):
             self.get_logger().info(f"something got wrong : received : {msg}")
 
     def env_data_callback(self,msg):
-        pass
-        # self.get_logger().info(f"got env_data :  {msg}")
-
-
+        self.stat.update(json.loads(msg.data))
+    
+        self.get_logger().info(f"got env_data :  {msg.data}")
 
     def scheduled_timer_callback(self):
         if self.env_mode == 2:  # led_mode가 2가 아닌 경우 함수 실행 중단
@@ -86,6 +89,11 @@ class EnvController(Node):
             self.gpio_publisher.publish(msg)
             self.get_logger().info(f'Published  state: {gpio_state}')
 
+    def stat_timer(self):
+        self.stat_pub.publish(String(data = json.dumps(self.stat)))
+        
+
+        
 def main(args=None):
     rclpy.init(args=args)
     env_Controller = EnvController()

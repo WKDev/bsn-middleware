@@ -129,7 +129,58 @@ def parse_basic_stat(cmd, resp):
     angular_velocity = angular_velocity if angular_velocity < 0x8000 else angular_velocity - 0x10000
 
     current_mode = int.from_bytes(resp[22:24], 'little')
-    error_code = ''.join([f"{byte:02x}" for byte in resp[24:44]])
+
+    sys_error = resp[24:36]
+    sys_fault = resp[42:44]
+
+    
+    # for i,e in enumerate(sys_error):
+    #     print(f"syserror : {i} 바이트 {e}  : {to_binary(e,1)[::-1]}")
+    # for i,e in enumerate(sys_fault):
+    #     print(f"sysfault : {i} 바이트 {e}  : {to_binary(e,1)[::-1]}")
+
+# syserror : 0 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 1 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 2 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 3 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 4 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 5 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 6 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 7 바이트 28  : [0, 0, 0, 1, 1, 1, 0, 0]
+# syserror : 8 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 9 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 10 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 11 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# sysfault : 0 바이트 1  : [0, 0, 0, 0, 0, 0, 0, 1]
+# sysfault : 1 바이트 64  : [0, 1, 0, 0, 0, 0, 0, 0]
+# syserror : 0 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 1 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 2 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 3 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 4 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 5 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 6 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 7 바이트 28  : [0, 0, 0, 1, 1, 1, 0, 0]
+# syserror : 8 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 9 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 10 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 11 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# sysfault : 0 바이트 1  : [0, 0, 0, 0, 0, 0, 0, 1]
+# sysfault : 1 바이트 64  : [0, 1, 0, 0, 0, 0, 0, 0]
+# syserror : 0 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 1 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 2 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 3 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 4 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 5 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 6 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 7 바이트 28  : [0, 0, 0, 1, 1, 1, 0, 0]
+# syserror : 8 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 9 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 10 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# syserror : 11 바이트 0  : [0, 0, 0, 0, 0, 0, 0, 0]
+# sysfault : 0 바이트 1  : [0, 0, 0, 0, 0, 0, 0, 1]
+# sysfault 64
 
     buttons_list = ['Start', 'Stop', 'E-Stop','Reset', 'Collision']
     op_stat_list = ['STOP','RUN', 'RESET']
@@ -214,10 +265,10 @@ def parse_magnavi_stat(cmd, resp):
 
     msg = AGVNavStat()
 
-    msg.target = int.from_bytes(resp[6:8], 'little')
-    msg.current = int.from_bytes(resp[8:10], 'little')
-    msg.prev = int.from_bytes(resp[10:12], 'little')
-    msg.next = int.from_bytes(resp[12:14], 'little')
+    msg.target = int.from_bytes(resp[6:8], 'little', signed=True)
+    msg.current = int.from_bytes(resp[8:10], 'little', signed=True)
+    msg.prev = int.from_bytes(resp[10:12], 'little', signed=True)
+    msg.next = int.from_bytes(resp[12:14], 'little', signed=True)
     msg.odom = int.from_bytes(resp[14:18], 'little')
     msg.speed = int.from_bytes(resp[18:20], 'little')
     msg.obstacle_avoid_type = int.from_bytes(resp[20:22], 'little')

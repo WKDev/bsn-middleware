@@ -33,7 +33,7 @@ class Integration(Node):
         self.work_pub = self.create_publisher(AGVWorkCmd, f'cmd_work', 10)
         self.charging_pub = self.create_publisher(AGVChargingCmd, f'cmd_charging', 10)
 
-        self.lg = self.get_logger()
+        self.lg = lambda x: self.get_logger().info(x)
     
 
         self.base_uri = "ws://localhost:8765"
@@ -73,25 +73,47 @@ class Integration(Node):
 
                     # cmd = self.cmd_queue.popleft()
                     if cmd_type == 'run_state':
-                        self.lg.info(f'run_state ok : {int(cmd["data"])}')
+                        self.lg(f'run_state ok : {int(cmd["data"])}')
                         self.btn_pub.publish(Int32(data = int(cmd["data"])))
                         # self.lg.info()
                     elif cmd_type == 'nav_mode':
-                        self.lg.info(f'nav_mode ok : {int(cmd["data"])}')
+                        self.lg(f'nav_mode ok : {int(cmd["data"])}')
                         self.mode_pub.publish(Int32(data = int(cmd["data"])))
-                    elif cmd_type =='lift':
-                        self.lg.info('lift')
+                    elif cmd_type =='lift_up':
+                        self.lg('lift up')
+                        self.script_pub.publish(Int32(data = 2))
+                    elif cmd_type =='lift_down':
+                        self.lg('lift down')
+                        self.script_pub.publish(Int32(data = 2))
 
                     elif cmd_type == 'nav_target':
-                        self.lg.info(f'nav_target ok : {int(cmd["data"])}')
+                        self.lg(f'nav_target ok : {int(cmd["data"])}')
                         self.task_pub.publish(Int32(data = int(cmd["data"])))
 
                     elif cmd_type == 'nav_init':
-                        self.lg.info(f'nav_init ok : {int(cmd["data"])}')
+                        self.lg(f'nav_init ok : {int(cmd["data"])}')
                         self.navinit_pub.publish(AGVNavInit(target_type=0, start = 0, end = 0 , direction = int(cmd["data"])))
 
+                    elif cmd_type == 'start_charging':
+                        self.lg(f'just start charging')
+                        self.script_pub.publish(Int32(data = 255))
+                        await asyncio. sleep(2)
+                        self.script_pub.publish(Int32(data = 5))
+
+                    
+                    elif cmd_type == 'stop_charging':
+                        self.lg(f'just stop charging')
+                        self.script_pub.publish(Int32(data = 255))
+                        await asyncio. sleep(2)
+                        self.script_pub.publish(Int32(data = 4))
+                    
+                    elif cmd_type == 'move_then_start_charging':
+                        self.lg(f'move_then start charging')
+                        self.charging_pub.publish(AGVChargingCmd(mode=0, auto_close=0))
+
+
                     else:
-                        self.lg.warning("other instruction")
+                        self.get_logger().warning("other instruction")
 
 
             except Exception as e:
@@ -143,7 +165,7 @@ class Integration(Node):
             'operating_status': msg.operating_status,
             'current_mode' : msg.current_mode,
             'lin_vel': f"{msg.twist.linear.x} mm/s",
-            'ang_vel': f"{msg.twist.angular.z} rad/s",
+            'ang_vel': f"{msg.twist.angular.z} mrad/s",
             'start_btn' : bool(msg.start_btn),
             'stop_btn' : bool(msg.stop_btn),
             'e-stop' : bool(msg.e_stop_btn),
@@ -170,6 +192,7 @@ class Integration(Node):
 
     def nav_stat_callback(self, msg):
         data = {
+            'init' : msg.mag_init_stat,
             'target': msg.target,
             'next': msg.next,
             'current': msg.current,
