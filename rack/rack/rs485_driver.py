@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, String
 from random import randint
-
+import json
 
 class SimplePublisher(Node):
     def __init__(self):
