@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, String
-from device_msgs.msg import Env
+from random import randint
 
 
 class SimplePublisher(Node):
