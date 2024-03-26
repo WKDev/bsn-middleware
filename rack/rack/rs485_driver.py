@@ -9,7 +9,7 @@ class SimplePublisher(Node):
         super().__init__('rs485_driver')
         self.env_pub = self.create_publisher(String, 'env_data', 10)
 
-        timer_period = 1.0  # seconds
+        timer_period = 1  # seconds
         self.create_timer(timer_period, self.timer_callback)
         self.env= {'top':{'temp':-99,'humid':-99, 'co2':-99},'mid':{'temp':-99,'humid':-99, 'co2':-99},'bot':{'temp':-99,'humid':-99, 'co2':-99}}
 

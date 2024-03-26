@@ -5,26 +5,16 @@ from device_msgs.msg import LedCtl
 import datetime
 import json
 
-NODE_NAME = 'env_manager'
-TOPIC_NAME = 'cmd_led'
 
 class EnvController(Node):
     def __init__(self):
         self.target_gpio = 18
         self.env_mode = 0
 
-        super().__init__(NODE_NAME)
-        self.cmd_env_subscriber = self.create_subscription(
-            LedCtl,
-            TOPIC_NAME,
-            self.cmd_env_callback,
-            10)
+        super().__init__('env_manager')
+        self.create_subscription(LedCtl,'cmd_led',self.cmd_env_callback,10)
 
-        self.env_data_subscriber = self.create_subscription(
-            String,
-            'env_data',
-            self.env_data_callback,
-            10)
+        self.create_subscription(String,'env_data',self.env_data_callback,10)
 
 
         self.gpio_publisher = self.create_publisher(Int32MultiArray, '/gpio', 10)
@@ -36,11 +26,24 @@ class EnvController(Node):
         self.scheduled_timer = self.create_timer(30, self.scheduled_timer_callback)  # 1분마다 timer_callback을 호출
 
         self.create_timer(1, self.stat_timer)
-        self.stat = {'alive':{'device_id':self.get_namespace(), 'device_type':'smart-rack','is_alive' : 'true'}}
+        self.stat = {'alive':{'device_id':self.get_namespace(), 'device_type':'smart-rack','is_alive' : 'true', 'ip':self.get_local_ip()}}
 
 
         print(self.env_mode)
         print(self.time_ranges)
+
+
+    def get_local_ip(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # doesn't even have to be reachable
+            s.connect(('10.255.255.255', 1))
+            IP = s.getsockname()[0]
+        except Exception:
+            IP = '127.0.0.1'
+        finally:
+            s.close()
+        return IP
 
 
     def cmd_env_callback(self, msg):
@@ -90,6 +93,7 @@ class EnvController(Node):
             self.get_logger().info(f'Published  state: {gpio_state}')
 
     def stat_timer(self):
+        self.stat['alive']['ip'] = self.get_local_ip()
         self.stat_pub.publish(String(data = json.dumps(self.stat)))
         
 
