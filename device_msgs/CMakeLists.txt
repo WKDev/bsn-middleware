@@ -19,8 +19,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/AGVNavStat.msg"
   "msg/AGVIo.msg"
   "msg/IrrigationStat.msg"
-  "msg/RackStat.msg"
-  "msg/Env.msg"
   "msg/LedCtl.msg"
   "msg/CobotStat.msg"
   DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
